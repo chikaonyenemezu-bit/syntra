@@ -1,0 +1,44 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16   # Postgres 16 with pgvector, ready for the Knowledge Assistant (step 5)
+    environment:
+      POSTGRES_USER: syntra
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-syntra}
+      POSTGRES_DB: syntra
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U syntra -d syntra"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+psycopg://syntra:${POSTGRES_PASSWORD:-syntra}@db:5432/syntra
+    ports: ["8000:8000"]
+    depends_on:
+      db: { condition: service_healthy }
+
+  worker:
+    build: ./backend
+    command: ["python", "-m", "app.worker.jobs"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+psycopg://syntra:${POSTGRES_PASSWORD:-syntra}@db:5432/syntra
+    depends_on:
+      db: { condition: service_healthy }
+      api: { condition: service_started }
+
+  frontend:
+    build: ./frontend
+    ports: ["8080:80"]
+    depends_on: [api]
+
+volumes:
+  pgdata:

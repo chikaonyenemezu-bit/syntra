@@ -1,0 +1,20 @@
+requirement_id,requirement,implemented_in,verified_by
+URS-MON-01,Record heartbeats,app/services/health_monitor.py::record_heartbeat,tests/test_monitoring.py::test_worker_cycle_with_injected_fault
+URS-MON-02,Degraded on thresholds,app/services/health_monitor.py::evaluate,tests/test_monitoring.py::test_evaluate_thresholds
+URS-MON-03,Down on report or timeout,app/services/health_monitor.py::check_timeouts,tests/test_monitoring.py::test_missing_heartbeat_marks_system_down
+URS-MON-04,Status changes audited,app/services/health_monitor.py::apply_status,smoke_pg.py
+URS-INC-01,Auto-open without duplicates,app/services/incident_manager.py::open_for_system_status,tests/test_monitoring.py::test_degradation_opens_one_incident_not_duplicates
+URS-INC-02,Critical for GxP outage and escalation,app/services/incident_manager.py::open_for_system_status,tests/test_monitoring.py::test_down_on_gxp_system_is_critical_and_escalates
+URS-INC-03,Recovery does not auto-close,app/services/incident_manager.py::mark_recovered,tests/test_monitoring.py::test_recovery_marks_incident_but_does_not_close_it
+URS-INC-04,Lifecycle enforced,app/services/incident_manager.py,tests/test_incidents.py::test_full_gxp_workflow; tests/test_incidents.py::test_invalid_transition_rejected
+URS-INC-05,Resolution note required,app/services/incident_manager.py::resolve; app/schemas.py::ResolveRequest,tests/test_incidents.py::test_resolution_note_required
+URS-INC-06,QA closes GxP incidents,app/services/incident_manager.py::close,tests/test_incidents.py::test_gxp_incident_cannot_be_closed_by_it_ops
+URS-INC-07,Four-eyes on closure,app/services/incident_manager.py::close,tests/test_incidents.py::test_four_eyes_on_non_gxp_incident
+URS-INC-08,Manual incident reporting,app/api/incidents.py::create_incident,tests/test_incidents.py::test_four_eyes_on_non_gxp_incident
+URS-SEC-01,Authentication required,app/security.py::get_current_user,tests/test_permissions.py::test_requires_login
+URS-SEC-02,Role-based permissions,app/security.py::require_roles,tests/test_permissions.py::test_viewer_is_read_only; tests/test_permissions.py::test_only_it_ops_acknowledges
+URS-SEC-03,Logins audited,app/api/auth.py::login,tests/test_permissions.py::test_wrong_password_rejected_and_audited
+URS-AUD-01,All changes audited,app/services/audit_logger.py::log_event,tests/test_incidents.py::test_every_transition_is_audited
+URS-AUD-02,Append-only at database level,app/models/audit_event.py::install_append_only_guard,tests/test_audit.py::test_update_is_blocked_by_database; tests/test_audit.py::test_delete_is_blocked_by_database; smoke_pg.py
+URS-AUD-03,Tamper detection,app/services/audit_logger.py::verify_chain,tests/test_audit.py::test_tampering_around_the_guard_is_detected
+URS-AUD-04,Audit history viewable,app/api/audit.py,tests/test_audit.py::test_audit_api_and_verify_endpoint
