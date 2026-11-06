@@ -10,6 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from app.database import get_db, init_db, make_engine
 from app.main import app
 from app.seed import DEMO_PASSWORD, seed
+from app.services.knowledge_index import index_documents
 
 
 @pytest.fixture()
@@ -20,6 +21,7 @@ def SessionTest(tmp_path):
     Session = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
     with Session() as db:
         seed(db)
+        index_documents(db)
     yield Session
     engine.dispose()
 

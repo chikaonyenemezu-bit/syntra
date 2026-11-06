@@ -1,4 +1,5 @@
 import type {
+  AssistantAnswer, AssistantStatus, KnowledgeDoc, KnowledgeDocDetail,
   AuditEvent, ChainCheck, ChangeRequest, FaultMode, Incident, IngestionJob, IngestionJobDetail, Integration,
   Lifecycle, LifecycleDetail, NewChange, Recall, RecallPage, Severity, Summary, SyncSource, System, Telemetry, User,
 } from "../types";
@@ -89,4 +90,13 @@ export const api = {
   implementChange: (n: string, note: string) => post<ChangeRequest>(`/api/changes/${n}/implement`, { note }),
   verifyChange: (n: string, password: string, evidence: string) =>
     post<ChangeRequest>(`/api/changes/${n}/verify`, { password, evidence }),
+
+  assistantStatus: () => request<AssistantStatus>("/api/assistant/status"),
+  ask: (question: string, history: { question: string; answer: string }[]) =>
+    post<AssistantAnswer>("/api/assistant/ask", { question, history }),
+  myQueries: () => request<AssistantAnswer[]>("/api/assistant/queries"),
+  rateAnswer: (n: string, rating: "helpful" | "incorrect", comment = "") =>
+    post<AssistantAnswer>(`/api/assistant/queries/${n}/feedback`, { rating, comment }),
+  documents: () => request<KnowledgeDoc[]>("/api/knowledge/documents"),
+  document: (docId: string) => request<KnowledgeDocDetail>(`/api/knowledge/documents/${docId}`),
 };

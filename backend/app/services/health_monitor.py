@@ -70,7 +70,6 @@ def check_timeouts(db: Session) -> list[System]:
         if last is None or system.status == SystemStatus.DOWN:
             continue
         if now - last > limit:
-            secs = int((now - last).total_seconds())
             # Name the moment of the last heartbeat: unlike "for N s" this stays true while the outage lasts.
             apply_status(db, system, SystemStatus.DOWN,
                          f"No heartbeat since {last:%Y-%m-%d %H:%M:%S} UTC (timeout {settings.heartbeat_timeout_seconds} s)")

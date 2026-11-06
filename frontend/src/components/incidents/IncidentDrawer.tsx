@@ -60,6 +60,10 @@ export function IncidentDrawer({ incident: inc, user, onClose, onChanged }: Prop
             resolved and formally closed.
           </p>
         )}
+        <a className="card-link small" onClick={onClose}
+           href={`#/assistant?q=${encodeURIComponent(`What should I do about ${inc.number} (${inc.system_code ?? "no system"})?`)}`}>
+          Ask the Knowledge Assistant about this incident →
+        </a>
         {inc.resolution_note && (
           <div className="callout"><strong>Resolution ({inc.resolved_by}):</strong> {inc.resolution_note}</div>
         )}

@@ -305,3 +305,100 @@ class ImplementRequest(BaseModel):
 class VerifyRequest(BaseModel):
     password: str = Field(min_length=1, max_length=200)
     evidence: str = Field(min_length=10, max_length=4000)
+
+
+# --- Knowledge Assistant (step 5) --------------------------------------------
+
+class AssistantStatusOut(BaseModel):
+    mode: str            # llm | retrieval
+    provider: str | None
+    model: str | None
+    documents: int
+    sections: int
+
+
+class HistoryTurn(BaseModel):
+    question: str = Field(max_length=2000)
+    answer: str = Field(max_length=8000)
+
+
+class AskRequest(BaseModel):
+    question: str = Field(min_length=3, max_length=2000)
+    history: list[HistoryTurn] = Field(default_factory=list, max_length=4)
+
+
+class CitationOut(BaseModel):
+    ref: str
+    doc_id: str
+    section: str
+    valid: bool
+    title: str | None
+    heading: str | None
+    version: str | None
+    excerpt: str | None
+
+
+class PassageOut(BaseModel):
+    ref: str
+    doc_id: str
+    section: str
+    title: str
+    heading: str
+    version: str
+    excerpt: str
+    score: float
+
+
+class ToolCallOut(BaseModel):
+    name: str
+    input: dict
+    summary: str
+    ok: bool
+
+
+class AssistantAnswerOut(BaseModel):
+    number: str
+    asked_by: str
+    asked_at: datetime
+    question: str
+    mode: str
+    provider: str | None
+    model: str | None
+    answer: str | None
+    citations: list[CitationOut]
+    tool_calls: list[ToolCallOut]
+    passages: list[PassageOut]
+    grounded: bool
+    latency_ms: int
+    input_tokens: int
+    output_tokens: int
+    error: str | None
+    feedback: str | None
+    feedback_comment: str | None
+
+
+class FeedbackRequest(BaseModel):
+    rating: Literal["helpful", "incorrect"]
+    comment: str = Field(default="", max_length=2000)
+
+
+class KnowledgeSectionOut(BaseModel):
+    section: str
+    heading: str
+    text: str
+
+
+class KnowledgeDocOut(BaseModel):
+    doc_id: str
+    title: str
+    doc_type: str
+    version: str
+    effective: date | None
+    owner: str
+    source: str | None
+    indexed_at: datetime
+    section_count: int
+
+
+class KnowledgeDocDetail(KnowledgeDocOut):
+    sections: list[KnowledgeSectionOut]

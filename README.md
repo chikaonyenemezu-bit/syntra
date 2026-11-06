@@ -10,7 +10,7 @@ Syntra runs against a simulated pharmaceutical IT landscape (MES, LIMS, ERP) plu
 data feed (openFDA drug recalls), and is built the way a regulated system should be: role-based access, a tamper-evident audit trail, and requirements traced
 to automated tests.
 
-**Status:** v0.3 · Operations Center, Integrations and GxP Lifecycle working (steps 1–4 of 6).
+**Status:** v0.4 · Operations Center, Integrations, GxP Lifecycle and Knowledge Assistant working (steps 1–5 of 6).
 
 ## What works now
 
@@ -44,6 +44,12 @@ to automated tests.
   reviews require re-entering the password. Each signature shows name, user, role, date/time and
   meaning; failed attempts are audited; the database refuses to change or delete signatures.
 - **Periodic reviews:** QA records and signs them; the next due date is recalculated.
+- **Knowledge Assistant:** answers questions from 11 controlled documents (SOPs for incidents, change
+  control, periodic review, e-signatures and audit trail review; runbooks for MES, LIMS, ERP and the
+  openFDA interface; reference notes on 21 CFR Part 11 and EU GMP Annex 11), combined with live data.
+  Works with Claude or OpenAI. Every citation is checked against the sections the model was given, and
+  unverifiable ones are flagged. The model can only *read* Syntra data. Without an API key it still
+  shows the matching sections. Every question is recorded, and answers can be rated.
 
 ## Run it
 
@@ -96,6 +102,24 @@ npm install && npm run dev               # terminal 3 → http://localhost:5173
    One recall changed from *Ongoing* to *Terminated*; the audit trail shows the field-level change.
 4. Click **Load sample data** again: the integration recovers; the incident stays open for review.
 
+### Knowledge Assistant setup
+
+Add one API key to `.env` (never commit it; `.env` is git-ignored), then restart:
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-...      # Claude (default model claude-sonnet-5-5)
+# or
+OPENAI_API_KEY=sk-...             # OpenAI Responses API (default model gpt-6-luna)
+LLM_MODEL=                        # optional: another model name
+```
+
+```bash
+docker compose up -d --force-recreate api
+```
+
+The Knowledge Assistant page shows which provider and model are active. Try the suggested questions,
+or open an incident and click **Ask the Knowledge Assistant about this incident**.
+
 ### Change control demo
 
 1. As `it.ops`, open **GxP Lifecycle**. LIMS-01's periodic review is overdue, ERP-01's is due soon,
@@ -128,11 +152,12 @@ frontend (React + TypeScript, nginx) ──/api──▶ api (FastAPI)
 | Folder | Contents |
 |---|---|
 | `backend/app/models` | Systems, telemetry, incidents, users, audit events, recalls, ingestion jobs, rejected records, lifecycle, periodic reviews, change requests, e-signatures |
-| `backend/app/services` | `health_monitor`, `incident_manager`, `audit_logger`, `data_validator`, `fda_pipeline`, `lifecycle_manager`, `esign` |
+| `backend/app/services` | `health_monitor`, `incident_manager`, `audit_logger`, `data_validator`, `fda_pipeline`, `lifecycle_manager`, `esign`, `knowledge_index`, `retrieval`, `llm`, `assistant_tools`, `assistant` |
 | `backend/app/integrations` | openFDA client and the synthetic sample fixtures |
+| `backend/app/knowledge` | Controlled documents (Markdown) and the retrieval evaluation set |
 | `backend/app/simulators` | MES, LIMS and ERP heartbeat simulators |
 | `backend/app/worker` | Scheduled monitoring cycle |
-| `backend/tests` | 68 tests: monitoring, incident rules, permissions, audit integrity, validation rules, sync pipeline, openFDA client, change control, segregation of duties, e-signatures, periodic reviews |
+| `backend/tests` | 85 tests: monitoring, incident rules, permissions, audit integrity, validation rules, sync pipeline, openFDA client, change control, segregation of duties, e-signatures, periodic reviews, document indexing, retrieval evaluation, Claude and OpenAI tool loops, citation checks, read-only tools |
 | `validation/` | URS and traceability matrix (requirement → code → test) |
 
 ## Configuration
@@ -174,8 +199,8 @@ report as test evidence.
 | 2 | Simulators, health monitoring, incidents, Operations Center | Done |
 | 3 | openFDA recall integration with data validation, quarantine, job history, integration incidents | Done |
 | 4 | GxP Lifecycle: system inventory, change control with dual approval, periodic review, electronic signatures | Done |
-| 5 | Knowledge Assistant: RAG over runbooks and regulatory documents | Next |
-| 6 | Demo scenario script, end-to-end test, risk assessment, test protocol, Alembic migrations | |
+| 5 | Knowledge Assistant: cited answers from controlled documents and live data, Claude or OpenAI | Done |
+| 6 | Demo scenario script, end-to-end test, risk assessment, test protocol, Alembic migrations | Next |
 
 ## Disclaimer
 

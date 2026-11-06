@@ -10,9 +10,10 @@ from app.bootstrap import prepare_database
 from app.database import SessionLocal, init_db
 from app.integrations.openfda import get_source
 from app.models.system import System, SystemStatus
+from app.models.knowledge import KnowledgeDocument
 from app.models.user import User
 from app.seed import DEMO_PASSWORD, seed
-from app.services import fda_pipeline, lifecycle_manager
+from app.services import assistant, fda_pipeline, lifecycle_manager
 from app.services.audit_logger import verify_chain
 from app.worker.jobs import simulate_and_monitor
 
@@ -66,6 +67,14 @@ def main() -> int:
             except Exception:
                 pass
             db.rollback()
+
+        # Knowledge Assistant: documents indexed once (despite three concurrent startups), retrieval works
+        if db.query(KnowledgeDocument).count() != 11:
+            failures.append(f"expected 11 indexed documents, found {db.query(KnowledgeDocument).count()}")
+        aq = assistant.ask(db, user["qa.lead"], "Who closes an incident on a GxP system?")
+        db.commit()
+        if not aq.passages.startswith('[{"ref": "SOP-ITO-001'):
+            failures.append(f"assistant retrieval returned {aq.passages[:80]}")
 
         db.execute(text("SET TIME ZONE 'Europe/Berlin'"))
         if not verify_chain(db).valid:

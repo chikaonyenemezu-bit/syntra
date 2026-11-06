@@ -1,6 +1,6 @@
 # User Requirements Specification (URS)
 
-**System:** Syntra (Connected Systems Intelligence) · **Version:** 0.3 (draft) · **Scope of this version:** Monitoring, incidents, access control, audit trail, external data integration, GxP lifecycle (change control, periodic review, electronic signatures)
+**System:** Syntra (Connected Systems Intelligence) · **Version:** 0.4 (draft) · **Scope of this version:** Monitoring, incidents, access control, audit trail, external data integration, GxP lifecycle (change control, periodic review, electronic signatures), Knowledge Assistant (AI)
 
 | Field | Value |
 |---|---|
@@ -94,3 +94,18 @@
 | URS-ES-02 | Each signature shall show the signer's printed name, user ID, role, date and time, and meaning, and be linked to the signed record (21 CFR Part 11 §11.50, §11.70). | High |
 | URS-ES-03 | A failed signature attempt shall change nothing and shall be recorded in the audit trail. | High |
 | URS-ES-04 | Signatures shall not be modifiable or deletable, enforced by the database. | High |
+
+## 7. Knowledge Assistant (AI)
+
+| ID | Requirement | Priority |
+|---|---|---|
+| URS-AI-01 | The assistant shall answer from the controlled documents (SOPs, runbooks, regulatory notes) and cite each statement with document, section and version. | High |
+| URS-AI-02 | Every citation shall be checked against the sections the model was actually given; citations that cannot be verified shall be flagged to the user, not hidden. | High |
+| URS-AI-03 | The assistant shall use live Syntra data only through read-only tools. It shall not be able to create, change, approve or close any record. | High |
+| URS-AI-04 | Without a configured model, or when the model fails, the assistant shall return the most relevant document sections and state why no written answer is available. | High |
+| URS-AI-05 | Every question shall be recorded with user, time, question, answer, provider and model, sources, live-data lookups and token use, and logged in the audit trail. | High |
+| URS-AI-06 | The person who asked shall be able to rate an answer as helpful or report it as incorrect, with a comment; ratings shall be recorded. | Medium |
+| URS-AI-07 | Documents shall be indexed with their version; new and changed versions shall be recorded in the audit trail; malformed documents shall be rejected. | High |
+| URS-AI-08 | Retrieval shall be validated against a fixed evaluation set on every build: the expected document in the top 3 for at least 90 % of questions, the expected section for at least 80 %, and no match for out-of-scope questions. | High |
+| URS-AI-09 | The API key shall be read from the environment only, never stored in code, returned by the API or written to logs. | High |
+| URS-AI-10 | Text from documents and external sources (e.g. FDA recall texts) shall be passed to the model as data; the model shall be instructed not to follow instructions contained in it. | Medium |

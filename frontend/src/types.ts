@@ -244,3 +244,79 @@ export interface NewChange {
   requires_revalidation: boolean;
   target_version: string | null;
 }
+
+// --- Knowledge Assistant (step 5) ----------------------------------------------
+
+export interface AssistantStatus {
+  mode: "llm" | "retrieval";
+  provider: "anthropic" | "openai" | null;
+  model: string | null;
+  documents: number;
+  sections: number;
+}
+
+export interface Citation {
+  ref: string;
+  doc_id: string;
+  section: string;
+  valid: boolean;
+  title: string | null;
+  heading: string | null;
+  version: string | null;
+  excerpt: string | null;
+}
+
+export interface Passage {
+  ref: string;
+  doc_id: string;
+  section: string;
+  title: string;
+  heading: string;
+  version: string;
+  excerpt: string;
+  score: number;
+}
+
+export interface ToolCall {
+  name: string;
+  input: Record<string, unknown>;
+  summary: string;
+  ok: boolean;
+}
+
+export interface AssistantAnswer {
+  number: string;
+  asked_by: string;
+  asked_at: string;
+  question: string;
+  mode: "llm" | "retrieval";
+  provider: string | null;
+  model: string | null;
+  answer: string | null;
+  citations: Citation[];
+  tool_calls: ToolCall[];
+  passages: Passage[];
+  grounded: boolean;
+  latency_ms: number;
+  input_tokens: number;
+  output_tokens: number;
+  error: string | null;
+  feedback: "helpful" | "incorrect" | null;
+  feedback_comment: string | null;
+}
+
+export interface KnowledgeDoc {
+  doc_id: string;
+  title: string;
+  doc_type: "sop" | "runbook" | "regulation";
+  version: string;
+  effective: string | null;
+  owner: string;
+  source: string | null;
+  indexed_at: string;
+  section_count: number;
+}
+
+export interface KnowledgeDocDetail extends KnowledgeDoc {
+  sections: { section: string; heading: string; text: string }[];
+}

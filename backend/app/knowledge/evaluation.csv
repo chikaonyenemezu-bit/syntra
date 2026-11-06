@@ -1,0 +1,33 @@
+id,question,expected_doc,expected_section,notes
+E01,What do I do when MES-01 has no heartbeat?,RB-MES-001,2,runbook immediate actions
+E02,Can operators continue production on paper when the MES is down?,RB-MES-001,2,paper backup batch record
+E03,Who closes an incident on a GxP system?,SOP-ITO-001,7,QA closure
+E04,Can the person who resolved an incident also close it?,SOP-ITO-001,7,four-eyes
+E05,How is incident severity classified?,SOP-ITO-001,5,severity table
+E06,How fast must a critical incident be acknowledged?,SOP-ITO-001,5,15 minutes
+E07,The system recovered by itself. Can I close the incident?,SOP-ITO-001,6,recovered stays open
+E08,Who must approve a change to a GxP system?,SOP-ITO-002,5,dual approval
+E09,Can I approve my own change request?,SOP-ITO-002,5,no self-approval
+E10,When does a change require revalidation?,SOP-ITO-002,4,major change
+E11,Who verifies an implemented change?,SOP-ITO-002,7,QA verification
+E12,How do I handle an emergency change?,SOP-ITO-002,8,retrospective within 2 days
+E13,How often is a periodic review required?,SOP-ITO-003,2,interval
+E14,What does a periodic review cover?,SOP-ITO-003,3,scope
+E15,What happens when a periodic review is overdue?,SOP-ITO-003,5,30 days
+E16,What does an electronic signature show?,SOP-ITO-004,4,manifestation
+E17,What happens if I enter the wrong password when signing?,SOP-ITO-004,5,failed attempts
+E18,How do I sign a change request?,SOP-ITO-004,3,password re-entry
+E19,What should I do if the audit trail verification fails?,SOP-ITO-005,4,broken chain
+E20,How often is the audit trail reviewed?,SOP-ITO-005,5,monthly
+E21,LIMS database connection pool exhausted,RB-LIMS-001,1,symptom
+E22,Instrument results are not imported into LIMS,RB-LIMS-001,1,HPLC import
+E23,The ERP interface queue to MES stopped,RB-ERP-001,1,queue stopped
+E24,Process orders are not reaching MES,RB-ERP-001,1,symptom
+E25,Why were records rejected in the openFDA import?,RB-INT-001,3,quarantine
+E26,The openFDA sync failed with HTTP 429,RB-INT-001,2,rate limit
+E27,What is a Class I recall?,RB-INT-001,5,recall classes
+E28,What must an audit trail record under Part 11?,REF-REG-001,3,11.10(e)
+E29,What does Annex 11 say about periodic evaluation?,REF-REG-002,6,section 11
+E30,What are the components of a non-biometric electronic signature?,REF-REG-001,5,11.200
+OOS1,What is the capital of France?,,,out of scope
+OOS2,Write me a poem about tablets,,,out of scope

@@ -28,6 +28,19 @@ class Settings(BaseSettings):
     fda_timeout_seconds: float = 30.0
     fda_rejection_threshold: float = 0.10      # above this share of rejected records the integration is degraded
 
+    # Knowledge Assistant (LLM). Put the key in .env, never in code or in a commit.
+    llm_provider: str = "auto"             # auto | anthropic | openai | none
+    anthropic_api_key: str = ""
+    openai_api_key: str = ""
+    llm_model: str = ""                    # empty = provider default
+    anthropic_version: str = "2026-10-21"
+    anthropic_base_url: str = "https://api.anthropic.com"   # change only for a company proxy or gateway
+    openai_base_url: str = "https://api.openai.com"
+    llm_max_tokens: int = 1200
+    llm_timeout_seconds: float = 60.0
+    llm_max_tool_rounds: int = 5
+    assistant_context_passages: int = 4
+
     # Seed demo users and systems on startup
     seed_demo_data: bool = True
 

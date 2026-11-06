@@ -32,10 +32,12 @@ def startup_lock(bind: Engine):
 
 def prepare_database(bind: Engine | None = None) -> None:
     from app.seed import seed
+    from app.services.knowledge_index import index_documents
 
     bind = bind or engine
     with startup_lock(bind):
         init_db(bind)
-        if settings.seed_demo_data:
-            with SessionLocal(bind=bind) as db:
+        with SessionLocal(bind=bind) as db:
+            if settings.seed_demo_data:
                 seed(db)
+            index_documents(db)  # controlled documents for the Knowledge Assistant (not demo data)
