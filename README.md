@@ -1,5 +1,5 @@
 # Syntra
-
+[![CI](https://github.com/chikaonyenemezu-bit/syntra/actions/workflows/ci.yml/badge.svg)](https://github.com/chikaonyenemezu-bit/syntra/actions/workflows/ci.yml)
 **CONNECTED SYSTEMS INTELLIGENCE**
 
 An intelligent enterprise IT platform for monitoring connected systems, managing integrations and
