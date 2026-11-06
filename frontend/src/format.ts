@@ -16,3 +16,14 @@ export function ago(iso: string | null): string {
 }
 
 export const label = (s: string) => s.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+
+export function fmtDate(iso: string | null): string {
+  if (!iso) return "–";
+  return new Date(iso.length === 10 ? iso + "T00:00:00" : iso).toLocaleDateString(undefined, {
+    day: "2-digit", month: "2-digit", year: "numeric",
+  });
+}
+
+export const ROLE_LABEL: Record<string, string> = {
+  system_owner: "System Owner", qa: "QA", it_ops: "IT Operations", admin: "Administrator", viewer: "Viewer",
+};

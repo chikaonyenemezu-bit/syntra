@@ -1,6 +1,6 @@
 import type {
-  AuditEvent, ChainCheck, FaultMode, Incident, IngestionJob, IngestionJobDetail, Integration, Recall,
-  RecallPage, Severity, Summary, SyncSource, System, Telemetry, User,
+  AuditEvent, ChainCheck, ChangeRequest, FaultMode, Incident, IngestionJob, IngestionJobDetail, Integration,
+  Lifecycle, LifecycleDetail, NewChange, Recall, RecallPage, Severity, Summary, SyncSource, System, Telemetry, User,
 } from "../types";
 
 const TOKEN_KEY = "syntra_token";
@@ -72,4 +72,21 @@ export const api = {
   job: (number: string) => request<IngestionJobDetail>(`/api/integrations/jobs/${number}`),
   recalls: (params: Record<string, string>) => request<RecallPage>(`/api/recalls?${new URLSearchParams(params)}`),
   recall: (number: string) => request<Recall>(`/api/recalls/${number}`),
+
+  lifecycle: () => request<Lifecycle[]>("/api/lifecycle"),
+  lifecycleDetail: (code: string) => request<LifecycleDetail>(`/api/lifecycle/${code}`),
+  recordReview: (code: string, body: { outcome: string; summary: string; password: string }) =>
+    post<LifecycleDetail>(`/api/lifecycle/${code}/reviews`, body),
+
+  changes: (openOnly: boolean) => request<ChangeRequest[]>(`/api/changes${openOnly ? "?open_only=true" : ""}`),
+  change: (n: string) => request<ChangeRequest>(`/api/changes/${n}`),
+  createChange: (body: NewChange) => post<ChangeRequest>("/api/changes", body),
+  submitChange: (n: string) => post<ChangeRequest>(`/api/changes/${n}/submit`),
+  approveChange: (n: string, password: string, comment: string) =>
+    post<ChangeRequest>(`/api/changes/${n}/approve`, { password, comment }),
+  rejectChange: (n: string, password: string, reason: string) =>
+    post<ChangeRequest>(`/api/changes/${n}/reject`, { password, reason }),
+  implementChange: (n: string, note: string) => post<ChangeRequest>(`/api/changes/${n}/implement`, { note }),
+  verifyChange: (n: string, password: string, evidence: string) =>
+    post<ChangeRequest>(`/api/changes/${n}/verify`, { password, evidence }),
 };

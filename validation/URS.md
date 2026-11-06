@@ -1,6 +1,6 @@
 # User Requirements Specification (URS)
 
-**System:** Syntra (Connected Systems Intelligence) · **Version:** 0.2 (draft) · **Scope of this version:** Monitoring, incidents, access control, audit trail, external data integration
+**System:** Syntra (Connected Systems Intelligence) · **Version:** 0.3 (draft) · **Scope of this version:** Monitoring, incidents, access control, audit trail, external data integration, GxP lifecycle (change control, periodic review, electronic signatures)
 
 | Field | Value |
 |---|---|
@@ -60,3 +60,37 @@
 | URS-INT-07 | When no import has succeeded for more than twice the schedule interval, the integration shall be marked *degraded*. | Medium |
 | URS-INT-08 | Authorised users shall be able to search stored recalls by product, firm, reason, recall number and lot information, and filter by classification. | Medium |
 | URS-INT-09 | Only IT Operations and administrators shall be able to start an import manually. | High |
+
+## 6. GxP lifecycle
+
+### 6.1 System inventory and validation state
+
+| ID | Requirement | Priority |
+|---|---|---|
+| URS-LC-01 | Each computerised system shall have a lifecycle record: GAMP category, risk class, running version, validated version, validation status, validation date and reference, and periodic review interval. | High |
+| URS-LC-02 | The validation state shall not be editable directly. It shall change only through a verified change request or a signed periodic review. | High |
+| URS-LC-03 | The platform shall show when the running version differs from the validated version. | High |
+| URS-LC-04 | The next periodic review date shall be calculated from the last review (or the validation date) and the interval, and shown as in order, due soon (60 days) or overdue. | High |
+| URS-LC-05 | Periodic reviews shall be recorded and signed by QA, with outcome and summary, only for validated systems. | High |
+
+### 6.2 Change control
+
+| ID | Requirement | Priority |
+|---|---|---|
+| URS-CC-01 | IT Operations, System Owners and QA shall be able to raise change requests with description, justification, impact assessment, category, risk, revalidation need and target version. | High |
+| URS-CC-02 | A change request shall follow draft → in review → approved → implemented → verified, or be rejected in review. Other transitions shall be refused. | High |
+| URS-CC-03 | Only the requester shall edit or submit a draft. Description, justification and impact assessment are required for submission. Submitted requests shall not be editable. | High |
+| URS-CC-04 | Changes to GxP-relevant systems shall require signed approval by the System Owner and by QA; other systems by the System Owner. | High |
+| URS-CC-05 | No one shall approve or reject their own change request; each role approves once; administrators are not approvers. | High |
+| URS-CC-06 | Only IT Operations shall implement an approved change, with an implementation note. Implementing a change that requires revalidation shall set the system to "in validation" and update the running version. | High |
+| URS-CC-07 | Only QA shall verify an implemented change, with evidence and a signature, and never a change they requested or implemented. Verification shall update the validated version and, for revalidation, set the system to "validated" with the verification date. | High |
+| URS-CC-08 | A rejection shall require a signed reason and shall be final. | Medium |
+
+### 6.3 Electronic signatures
+
+| ID | Requirement | Priority |
+|---|---|---|
+| URS-ES-01 | Approvals, rejections, verifications and periodic reviews shall be electronic signatures executed by re-entering the password. | High |
+| URS-ES-02 | Each signature shall show the signer's printed name, user ID, role, date and time, and meaning, and be linked to the signed record (21 CFR Part 11 §11.50, §11.70). | High |
+| URS-ES-03 | A failed signature attempt shall change nothing and shall be recorded in the audit trail. | High |
+| URS-ES-04 | Signatures shall not be modifiable or deletable, enforced by the database. | High |

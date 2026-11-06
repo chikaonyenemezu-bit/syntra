@@ -43,7 +43,9 @@ def init_db(bind: Engine | None = None) -> None:
     """
     from app import models  # noqa: F401  (registers models)
     from app.models.audit_event import install_append_only_guard
+    from app.models.esignature import install_esignature_guard
 
     bind = bind or engine
     Base.metadata.create_all(bind)
     install_append_only_guard(bind)
+    install_esignature_guard(bind)

@@ -10,7 +10,7 @@ Syntra runs against a simulated pharmaceutical IT landscape (MES, LIMS, ERP) plu
 data feed (openFDA drug recalls), and is built the way a regulated system should be: role-based access, a tamper-evident audit trail, and requirements traced
 to automated tests.
 
-**Status:** v0.2 · Operations Center and Integrations working (steps 1–3 of 6).
+**Status:** v0.3 · Operations Center, Integrations and GxP Lifecycle working (steps 1–4 of 6).
 
 ## What works now
 
@@ -34,6 +34,16 @@ to automated tests.
 - **Import run history:** every run is recorded with fetched / new / changed / unchanged / rejected
   counts, duration, source and who triggered it.
 - **Recall browser:** search by product, firm, reason, recall or lot number; filter by class.
+- **System inventory:** each system's GAMP category, risk, running vs. validated version, validation
+  status and periodic review due date (in order / due soon / overdue).
+- **Change control:** draft → in review → approved → implemented → verified. GxP systems need
+  signed approval by the System Owner **and** QA; nobody approves their own request; IT Ops
+  implements; an independent QA member verifies. A change requiring revalidation puts the system
+  *in validation* until it is verified, then updates the validated version.
+- **Electronic signatures (21 CFR Part 11 style):** approvals, rejections, verifications and periodic
+  reviews require re-entering the password. Each signature shows name, user, role, date/time and
+  meaning; failed attempts are audited; the database refuses to change or delete signatures.
+- **Periodic reviews:** QA records and signs them; the next due date is recalculated.
 
 ## Run it
 
@@ -47,8 +57,8 @@ Open http://localhost:8080 and sign in. All demo users use the password `demo123
 | User | Role | Can |
 |---|---|---|
 | `it.ops` / `it.ops2` | IT Operations | acknowledge, resolve, inject faults, run integration syncs |
-| `qa.lead` | QA | close GxP incidents, verify audit trail |
-| `system.owner` | System owner | report incidents |
+| `qa.lead` / `qa.reviewer` | QA | close GxP incidents, approve and verify changes, sign periodic reviews, verify audit trail |
+| `system.owner` | System owner | report incidents, approve changes |
 | `viewer` | Read-only | view |
 | `admin` | Admin | inject faults, run integration syncs, verify audit trail |
 
@@ -86,6 +96,20 @@ npm install && npm run dev               # terminal 3 → http://localhost:5173
    One recall changed from *Ongoing* to *Terminated*; the audit trail shows the field-level change.
 4. Click **Load sample data** again: the integration recovers; the incident stays open for review.
 
+### Change control demo
+
+1. As `it.ops`, open **GxP Lifecycle**. LIMS-01's periodic review is overdue, ERP-01's is due soon,
+   and the openFDA interface is not validated yet.
+2. **New change request** for MES-01: category *Major*, target version `3.3.0`. Create the draft,
+   then **Submit for approval**.
+3. As `system.owner`: open it, **Approve…** and sign with the password. Still one approval pending.
+4. As `qa.lead`: **Approve…** and sign. The change is approved.
+5. As `it.ops2`: **Mark as implemented**. MES-01 now runs 3.3.0 but is *in validation*
+   (validated version still 3.2.1).
+6. As `qa.reviewer`: **Verify…** with test evidence and sign. MES-01 is validated at 3.3.0, and the
+   change shows all three signatures.
+7. As `qa.lead`: open **LIMS-01** and sign a periodic review; it is no longer overdue.
+
 The sample files are synthetic records in openFDA format (invented firms and recall numbers), so
 the demo works offline. Live data comes from https://open.fda.gov/apis/drug/enforcement/.
 
@@ -103,12 +127,12 @@ frontend (React + TypeScript, nginx) ──/api──▶ api (FastAPI)
 
 | Folder | Contents |
 |---|---|
-| `backend/app/models` | Systems, telemetry, incidents, users, audit events, recalls, ingestion jobs, rejected records |
-| `backend/app/services` | `health_monitor`, `incident_manager`, `audit_logger`, `data_validator`, `fda_pipeline` |
+| `backend/app/models` | Systems, telemetry, incidents, users, audit events, recalls, ingestion jobs, rejected records, lifecycle, periodic reviews, change requests, e-signatures |
+| `backend/app/services` | `health_monitor`, `incident_manager`, `audit_logger`, `data_validator`, `fda_pipeline`, `lifecycle_manager`, `esign` |
 | `backend/app/integrations` | openFDA client and the synthetic sample fixtures |
 | `backend/app/simulators` | MES, LIMS and ERP heartbeat simulators |
 | `backend/app/worker` | Scheduled monitoring cycle |
-| `backend/tests` | 55 tests: monitoring, workflow rules, permissions, audit integrity, validation rules, sync pipeline, openFDA client |
+| `backend/tests` | 68 tests: monitoring, incident rules, permissions, audit integrity, validation rules, sync pipeline, openFDA client, change control, segregation of duties, e-signatures, periodic reviews |
 | `validation/` | URS and traceability matrix (requirement → code → test) |
 
 ## Configuration
@@ -141,8 +165,8 @@ report as test evidence.
 | 1 | Database, models, auth, audit trail | Done |
 | 2 | Simulators, health monitoring, incidents, Operations Center | Done |
 | 3 | openFDA recall integration with data validation, quarantine, job history, integration incidents | Done |
-| 4 | GxP Lifecycle: system inventory, change requests, periodic review | Next |
-| 5 | Knowledge Assistant: RAG over runbooks and regulatory documents | |
+| 4 | GxP Lifecycle: system inventory, change control with dual approval, periodic review, electronic signatures | Done |
+| 5 | Knowledge Assistant: RAG over runbooks and regulatory documents | Next |
 | 6 | Demo scenario script, end-to-end test, risk assessment, test protocol, Alembic migrations | |
 
 ## Disclaimer

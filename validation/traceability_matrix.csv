@@ -27,3 +27,20 @@ URS-INT-06,Integration health and incidents,app/services/fda_pipeline.py::run_sy
 URS-INT-07,Staleness detection,app/services/fda_pipeline.py::check_staleness,tests/test_fda_pipeline.py::test_staleness_degrades_integration
 URS-INT-08,Recall search,app/api/recalls.py::search_recalls,tests/test_integrations_api.py::test_recall_search
 URS-INT-09,Sync restricted to IT Ops and admin,app/api/integrations.py::sync_now,tests/test_integrations_api.py::test_only_it_ops_and_admin_can_sync
+URS-LC-01,Lifecycle record per system,app/models/lifecycle.py::SystemLifecycle; app/seed.py::DEMO_LIFECYCLE,tests/test_lifecycle.py::test_lifecycle_api
+URS-LC-02,Validation state only via controlled processes,app/services/lifecycle_manager.py (no direct edit endpoint),tests/test_lifecycle.py::test_full_major_change_revalidates_system; tests/test_lifecycle.py::test_periodic_review_by_qa_with_signature
+URS-LC-03,Running vs validated version shown,app/api/lifecycle.py; frontend/src/components/lifecycle/SystemInventory.tsx,tests/test_lifecycle.py::test_full_major_change_revalidates_system
+URS-LC-04,Next review date and state,app/services/lifecycle_manager.py::review_state; add_months,tests/test_lifecycle.py::test_seeded_systems_show_every_review_state; tests/test_lifecycle.py::test_add_months_clamps_to_month_end
+URS-LC-05,Signed periodic review by QA,app/services/lifecycle_manager.py::record_periodic_review,tests/test_lifecycle.py::test_periodic_review_by_qa_with_signature; tests/test_lifecycle.py::test_periodic_review_rules
+URS-CC-01,Raise change requests,app/services/lifecycle_manager.py::create_change; app/api/changes.py,tests/test_lifecycle.py::test_draft_rules
+URS-CC-02,Change request workflow,app/services/lifecycle_manager.py,tests/test_lifecycle.py::test_full_major_change_revalidates_system; tests/test_lifecycle.py::test_draft_rules
+URS-CC-03,Draft editing and submission rules,app/services/lifecycle_manager.py::update_change; submit,tests/test_lifecycle.py::test_draft_rules
+URS-CC-04,Dual approval for GxP systems,app/services/lifecycle_manager.py::required_roles; approve,tests/test_lifecycle.py::test_full_major_change_revalidates_system; tests/test_lifecycle.py::test_non_gxp_change_needs_system_owner_only
+URS-CC-05,No self-approval; one approval per role,app/services/lifecycle_manager.py::_check_approver; approve,tests/test_lifecycle.py::test_segregation_of_duties
+URS-CC-06,Implementation by IT Ops; in validation,app/services/lifecycle_manager.py::implement,tests/test_lifecycle.py::test_full_major_change_revalidates_system; tests/test_lifecycle.py::test_minor_change_keeps_validated_state
+URS-CC-07,Verification by independent QA updates validation,app/services/lifecycle_manager.py::verify,tests/test_lifecycle.py::test_full_major_change_revalidates_system; tests/test_lifecycle.py::test_segregation_of_duties; smoke_pg.py
+URS-CC-08,Signed and final rejection,app/services/lifecycle_manager.py::reject,tests/test_lifecycle.py::test_rejection_is_final
+URS-ES-01,Signature by password re-entry,app/services/esign.py::sign,tests/test_lifecycle.py::test_full_major_change_revalidates_system
+URS-ES-02,Signature manifestation,app/models/esignature.py; frontend/src/components/lifecycle/SignatureLine.tsx,tests/test_lifecycle.py::test_periodic_review_by_qa_with_signature
+URS-ES-03,Failed signature changes nothing and is audited,app/api/changes.py::run; app/services/esign.py::record_failed_signature,tests/test_lifecycle.py::test_wrong_password_is_rejected_and_audited; tests/test_lifecycle.py::test_periodic_review_rules
+URS-ES-04,Signatures append-only in the database,app/models/esignature.py::install_esignature_guard,tests/test_lifecycle.py::test_signatures_are_append_only; smoke_pg.py

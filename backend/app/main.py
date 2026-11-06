@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import audit, auth, incidents, integrations, monitoring, recalls, systems
+from app.api import audit, auth, changes, incidents, integrations, lifecycle, monitoring, recalls, systems
 from app.config import settings
 from app.database import SessionLocal, init_db
 from app.seed import seed
@@ -20,7 +20,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="Syntra API",
-    version="0.2.0",
+    version="0.3.0",
     description=(
         "Syntra — Connected Systems Intelligence. An intelligent enterprise IT platform for monitoring "
         "connected systems, managing integrations and incidents, supporting GxP lifecycle workflows, "
@@ -38,7 +38,7 @@ app.add_middleware(
 )
 
 for r in (auth.router, systems.router, monitoring.router, incidents.router, audit.router,
-          integrations.router, recalls.router):
+          integrations.router, recalls.router, lifecycle.router, changes.router):
     app.include_router(r)
 
 

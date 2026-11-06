@@ -182,3 +182,126 @@ class RecallOut(ORM):
 class RecallPage(BaseModel):
     total: int
     items: list[RecallOut]
+
+
+# --- GxP lifecycle (step 4) --------------------------------------------------
+
+class ESignatureOut(ORM):
+    id: int
+    signer: str
+    signer_name: str
+    signer_role: str
+    meaning: str
+    comment: str
+    signed_at: datetime
+
+
+class LifecycleOut(BaseModel):
+    system: SystemOut
+    risk_class: str
+    current_version: str
+    validated_version: str | None
+    validation_status: str
+    validated_on: date | None
+    validation_report: str | None
+    periodic_review_months: int
+    last_review_on: date | None
+    last_review_outcome: str | None
+    next_review_due: date | None
+    review_state: str
+    open_changes: int
+
+
+class PeriodicReviewOut(ORM):
+    number: str
+    reviewed_on: date
+    outcome: str
+    summary: str
+    reviewer: str
+    signature: ESignatureOut | None = None
+
+
+class LifecycleDetail(LifecycleOut):
+    reviews: list[PeriodicReviewOut] = []
+
+
+class PeriodicReviewCreate(BaseModel):
+    outcome: Literal["remains_validated", "remediation_required"]
+    summary: str = Field(min_length=20, max_length=4000)
+    password: str = Field(min_length=1, max_length=200)
+
+
+class ChangeFields(BaseModel):
+    title: str = Field(min_length=5, max_length=200)
+    description: str = Field(default="", max_length=8000)
+    justification: str = Field(default="", max_length=4000)
+    impact_assessment: str = Field(default="", max_length=8000)
+    category: Literal["minor", "major"] = "minor"
+    risk: Literal["low", "medium", "high"] = "low"
+    requires_revalidation: bool | None = None
+    target_version: str | None = Field(default=None, max_length=32)
+
+
+class ChangeCreate(ChangeFields):
+    system_code: str
+
+
+class ChangeUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=5, max_length=200)
+    description: str | None = Field(default=None, max_length=8000)
+    justification: str | None = Field(default=None, max_length=4000)
+    impact_assessment: str | None = Field(default=None, max_length=8000)
+    category: Literal["minor", "major"] | None = None
+    risk: Literal["low", "medium", "high"] | None = None
+    requires_revalidation: bool | None = None
+    target_version: str | None = Field(default=None, max_length=32)
+
+
+class ChangeOut(ORM):
+    id: int
+    number: str
+    system_code: str = ""
+    title: str
+    description: str
+    justification: str
+    impact_assessment: str
+    category: str
+    risk: str
+    requires_revalidation: bool
+    target_version: str | None
+    status: str
+    requested_by: str
+    created_at: datetime
+    submitted_at: datetime | None
+    approved_at: datetime | None
+    rejected_at: datetime | None
+    rejected_by: str | None
+    rejection_reason: str | None
+    implemented_at: datetime | None
+    implemented_by: str | None
+    implementation_note: str | None
+    verified_at: datetime | None
+    verified_by: str | None
+    verification_evidence: str | None
+    required_approvals: list[str] = []
+    pending_approvals: list[str] = []
+    signatures: list[ESignatureOut] = []
+
+
+class SignRequest(BaseModel):
+    password: str = Field(min_length=1, max_length=200)
+    comment: str = Field(default="", max_length=4000)
+
+
+class RejectRequest(BaseModel):
+    password: str = Field(min_length=1, max_length=200)
+    reason: str = Field(min_length=10, max_length=4000)
+
+
+class ImplementRequest(BaseModel):
+    note: str = Field(min_length=10, max_length=4000)
+
+
+class VerifyRequest(BaseModel):
+    password: str = Field(min_length=1, max_length=200)
+    evidence: str = Field(min_length=10, max_length=4000)

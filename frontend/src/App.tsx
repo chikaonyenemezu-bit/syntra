@@ -4,18 +4,20 @@ import type { User } from "./types";
 import { Login } from "./pages/Login";
 import { OperationsCenter } from "./pages/OperationsCenter";
 import { IntegrationsIncidents } from "./pages/IntegrationsIncidents";
+import { GxPLifecycle } from "./pages/GxPLifecycle";
 
-type Page = "operations" | "integrations";
+type Page = "operations" | "integrations" | "lifecycle";
 
 const NAV: { name: string; page: Page | null }[] = [
   { name: "Operations Center", page: "operations" },
   { name: "Integrations & Incidents", page: "integrations" },
-  { name: "GxP Lifecycle", page: null },
+  { name: "GxP Lifecycle", page: "lifecycle" },
   { name: "Knowledge Assistant", page: null },
 ];
 
 function pageFromHash(): Page {
-  return window.location.hash === "#/integrations" ? "integrations" : "operations";
+  const h = window.location.hash;
+  return h === "#/integrations" ? "integrations" : h === "#/lifecycle" ? "lifecycle" : "operations";
 }
 
 export default function App() {
@@ -64,7 +66,9 @@ export default function App() {
         </div>
       </aside>
       <main className="main">
-        {page === "integrations" ? <IntegrationsIncidents user={user} /> : <OperationsCenter user={user} />}
+        {page === "integrations" ? <IntegrationsIncidents user={user} />
+          : page === "lifecycle" ? <GxPLifecycle user={user} />
+          : <OperationsCenter user={user} />}
       </main>
     </div>
   );

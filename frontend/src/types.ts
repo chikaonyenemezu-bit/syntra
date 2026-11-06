@@ -156,3 +156,91 @@ export interface RecallPage {
   total: number;
   items: Recall[];
 }
+
+// --- GxP lifecycle (step 4) ----------------------------------------------------
+
+export type ValidationStatus = "not_validated" | "in_validation" | "validated" | "retired";
+export type ReviewState = "ok" | "due_soon" | "overdue" | "not_applicable";
+export type ChangeStatus = "draft" | "in_review" | "approved" | "implemented" | "verified" | "rejected";
+
+export interface ESignature {
+  id: number;
+  signer: string;
+  signer_name: string;
+  signer_role: string;
+  meaning: string;
+  comment: string;
+  signed_at: string;
+}
+
+export interface Lifecycle {
+  system: System;
+  risk_class: "high" | "medium" | "low";
+  current_version: string;
+  validated_version: string | null;
+  validation_status: ValidationStatus;
+  validated_on: string | null;
+  validation_report: string | null;
+  periodic_review_months: number;
+  last_review_on: string | null;
+  last_review_outcome: string | null;
+  next_review_due: string | null;
+  review_state: ReviewState;
+  open_changes: number;
+}
+
+export interface PeriodicReview {
+  number: string;
+  reviewed_on: string;
+  outcome: "remains_validated" | "remediation_required";
+  summary: string;
+  reviewer: string;
+  signature: ESignature | null;
+}
+
+export interface LifecycleDetail extends Lifecycle {
+  reviews: PeriodicReview[];
+}
+
+export interface ChangeRequest {
+  id: number;
+  number: string;
+  system_code: string;
+  title: string;
+  description: string;
+  justification: string;
+  impact_assessment: string;
+  category: "minor" | "major";
+  risk: "low" | "medium" | "high";
+  requires_revalidation: boolean;
+  target_version: string | null;
+  status: ChangeStatus;
+  requested_by: string;
+  created_at: string;
+  submitted_at: string | null;
+  approved_at: string | null;
+  rejected_at: string | null;
+  rejected_by: string | null;
+  rejection_reason: string | null;
+  implemented_at: string | null;
+  implemented_by: string | null;
+  implementation_note: string | null;
+  verified_at: string | null;
+  verified_by: string | null;
+  verification_evidence: string | null;
+  required_approvals: string[];
+  pending_approvals: string[];
+  signatures: ESignature[];
+}
+
+export interface NewChange {
+  system_code: string;
+  title: string;
+  description: string;
+  justification: string;
+  impact_assessment: string;
+  category: "minor" | "major";
+  risk: "low" | "medium" | "high";
+  requires_revalidation: boolean;
+  target_version: string | null;
+}
