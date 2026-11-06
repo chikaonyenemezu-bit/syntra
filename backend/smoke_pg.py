@@ -2,9 +2,11 @@
 the PostgreSQL append-only triggers (audit trail and e-signatures), a valid hash chain across time
 zones, and the main flows (monitoring, openFDA import, change control) on the production database."""
 import sys
+from concurrent.futures import ThreadPoolExecutor
 
 from sqlalchemy import select, text
 
+from app.bootstrap import prepare_database
 from app.database import SessionLocal, init_db
 from app.integrations.openfda import get_source
 from app.models.system import System, SystemStatus
@@ -16,9 +18,12 @@ from app.worker.jobs import simulate_and_monitor
 
 
 def main() -> int:
-    init_db()
-    init_db()  # must be idempotent
     failures = []
+    # API and worker prepare the database at the same moment on every start: must not collide.
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        errors = [f.exception() for f in [pool.submit(prepare_database) for _ in range(3)]]
+    failures += [f"concurrent startup failed: {e!r}" for e in errors if e]
+    init_db()  # must be idempotent
     with SessionLocal() as db:
         seed(db)
         db.scalars(select(System).where(System.code == "ERP-01")).one().simulated_fault = "down"

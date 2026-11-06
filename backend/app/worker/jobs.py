@@ -10,10 +10,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.database import SessionLocal, init_db
+from app.bootstrap import prepare_database
+from app.database import SessionLocal
 from app.integrations.openfda import OpenFDASource
 from app.models.system import System
-from app.seed import seed
 from app.services import fda_pipeline, health_monitor
 from app.simulators import SIMULATORS
 
@@ -60,10 +60,7 @@ def fda_sync() -> None:
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     logging.getLogger("apscheduler").setLevel(logging.WARNING)  # no log line per tick
-    init_db()
-    if settings.seed_demo_data:
-        with SessionLocal() as db:
-            seed(db)
+    prepare_database()  # serialised with the API: see app/bootstrap.py
     scheduler = BlockingScheduler(timezone="UTC")
     scheduler.add_job(tick, "interval", seconds=settings.heartbeat_interval_seconds,
                       id="simulate_and_monitor", max_instances=1, coalesce=True)

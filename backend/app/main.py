@@ -5,16 +5,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import audit, auth, changes, incidents, integrations, lifecycle, monitoring, recalls, systems
 from app.config import settings
-from app.database import SessionLocal, init_db
-from app.seed import seed
+from app.bootstrap import prepare_database
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    init_db()
-    if settings.seed_demo_data:
-        with SessionLocal() as db:
-            seed(db)
+    prepare_database()  # serialised with the worker: see app/bootstrap.py
     yield
 
 

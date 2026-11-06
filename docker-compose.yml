@@ -14,6 +14,7 @@ services:
 
   api:
     build: ./backend
+    restart: unless-stopped
     env_file:
       - path: .env
         required: false
@@ -25,6 +26,7 @@ services:
 
   worker:
     build: ./backend
+    restart: unless-stopped
     command: ["python", "-m", "app.worker.jobs"]
     env_file:
       - path: .env

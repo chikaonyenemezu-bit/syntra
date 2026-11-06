@@ -148,6 +148,14 @@ All settings come from environment variables (see `.env.example`). The integrati
 | `FDA_REJECTION_THRESHOLD` | `0.10` | Share of rejected records above which the integration is degraded |
 | `FDA_API_KEY` | empty | Optional openFDA key for a higher rate limit |
 
+## Troubleshooting
+
+- **A container stopped (e.g. `worker-1 exited with code 1`):** `api` and `worker` restart
+  automatically. To restart one by hand: `docker compose restart worker`.
+- **The page looks outdated after an update:** reload once. If it still looks old, reload with
+  `Cmd + Shift + R` (Mac) or `Ctrl + Shift + R` (Windows).
+- **Start from an empty database:** `docker compose down -v`, then `docker compose up --build`.
+
 ## Tests
 
 ```bash
