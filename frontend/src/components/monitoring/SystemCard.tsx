@@ -24,9 +24,12 @@ export function SystemCard({ system, tick, canInjectFault, onFaultChanged }: Pro
   const [telemetry, setTelemetry] = useState<Telemetry[]>([]);
   const [busy, setBusy] = useState(false);
 
+  const isIntegration = system.system_type === "INTEGRATION";
+
   useEffect(() => {
+    if (isIntegration) return;
     api.telemetry(system.code).then(setTelemetry).catch(() => undefined);
-  }, [system.code, tick]);
+  }, [system.code, tick, isIntegration]);
 
   const last = telemetry[telemetry.length - 1];
 
@@ -52,6 +55,16 @@ export function SystemCard({ system, tick, canInjectFault, onFaultChanged }: Pro
         <span className="tag">Owner: {system.owner}</span>
       </div>
 
+      {isIntegration ? (
+        <>
+          <dl className="metrics">
+            <div><dt>Monitored by</dt><dd>Import runs</dd></div>
+            <div><dt>Last sync</dt><dd>{ago(system.last_heartbeat_at)}</dd></div>
+          </dl>
+          <p className="small status-reason">{system.status_reason || "Waiting for the first sync."}</p>
+          <a className="card-link small" href="#/integrations">Open integration →</a>
+        </>
+      ) : (<>
       <LatencySparkline points={telemetry} threshold={LATENCY_THRESHOLD_MS} />
 
       <dl className="metrics">
@@ -71,6 +84,7 @@ export function SystemCard({ system, tick, canInjectFault, onFaultChanged }: Pro
           </select>
         </div>
       )}
+      </>)}
     </article>
   );
 }

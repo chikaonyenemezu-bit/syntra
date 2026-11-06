@@ -28,6 +28,9 @@ DEMO_SYSTEMS = [
     dict(code="ERP-01", name="Enterprise Resource Planning", system_type="ERP",
          description="Materials, inventory, process orders and batch status",
          gxp_relevant=True, gamp_category=4, owner="Head of Supply Chain"),
+    dict(code="INT-FDA-01", name="openFDA Drug Recall Interface", system_type="INTEGRATION",
+         description="Scheduled import of FDA drug enforcement reports (recalls) with record-level validation",
+         gxp_relevant=True, gamp_category=5, owner="Head of Quality Assurance"),
 ]
 
 

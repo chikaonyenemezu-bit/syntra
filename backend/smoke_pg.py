@@ -5,8 +5,10 @@ import sys
 from sqlalchemy import select, text
 
 from app.database import SessionLocal, init_db
+from app.integrations.openfda import get_source
 from app.models.system import System, SystemStatus
 from app.seed import seed
+from app.services import fda_pipeline
 from app.services.audit_logger import verify_chain
 from app.worker.jobs import simulate_and_monitor
 
@@ -22,6 +24,16 @@ def main() -> int:
         db.commit()
         if db.scalars(select(System).where(System.code == "ERP-01")).one().status != SystemStatus.DOWN:
             failures.append("ERP-01 should be down after fault injection")
+
+        # openFDA integration with bundled sample data (no network needed)
+        clean = fda_pipeline.run_sync(db, get_source("sample"), trigger="manual", actor="smoke")
+        db.commit()
+        dirty = fda_pipeline.run_sync(db, get_source("sample_with_errors"), trigger="manual", actor="smoke")
+        db.commit()
+        if (clean.inserted, dirty.rejected, dirty.updated) != (12, 6, 1):
+            failures.append(f"unexpected sync counts: {clean.inserted=} {dirty.rejected=} {dirty.updated=}")
+        if fda_pipeline.get_integration(db).status != SystemStatus.DEGRADED:
+            failures.append("INT-FDA-01 should be degraded after the error sample")
 
         db.execute(text("SET TIME ZONE 'Europe/Berlin'"))
         if not verify_chain(db).valid:

@@ -147,3 +147,35 @@ td { padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: 
   .me { margin-top: 0; }
   .page { padding: 16px; }
 }
+
+/* integrations (step 3) */
+.nav-item:not(.disabled):not(.active):hover { background: var(--bg); }
+.warn-text { color: var(--warn); font-weight: 600; }
+.metrics-4 { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+.integration-card h2 { font-size: 18px; }
+.card-link { color: var(--accent); font-weight: 600; text-decoration: none; }
+.card-link:hover { text-decoration: underline; }
+.sync-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding-top: 12px; border-top: 1px dashed var(--border); }
+.sync-actions p { margin: 0; flex-basis: 100%; }
+th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+tr.row-selected td { background: var(--accent-soft); }
+.job-detail { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+.job-detail h3 { font-size: 15px; }
+.callout-bad { background: var(--bad-bg); color: var(--bad); }
+.rejected-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.rejected-list > li { border: 1px solid var(--border); border-left: 3px solid var(--warn); border-radius: 8px; padding: 10px 12px; }
+.rejected-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+.reasons { margin: 6px 0 0; padding-left: 18px; font-size: 13.5px; line-height: 1.6; }
+.payload { margin: 8px 0 0; padding: 10px; background: var(--bg); border-radius: 6px; font-size: 12px; max-height: 260px; overflow: auto; }
+.recall-filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 12px; }
+.recall-filters .grow { flex: 1 1 280px; }
+.recall-filters select { min-width: 140px; }
+td.wide { min-width: 220px; max-width: 340px; }
+.clamp { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.tag-sample { margin-left: 6px; font-size: 10.5px; }
+tr.detail-row td { background: var(--bg); }
+.recall-detail { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px 20px; margin: 4px 0; }
+.recall-detail dt { font-size: 11.5px; color: var(--muted); }
+.recall-detail dd { margin: 2px 0 0; font-size: 13.5px; line-height: 1.5; }
+.pager { display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 12px; flex-wrap: wrap; }
+.pager span { margin-right: auto; }

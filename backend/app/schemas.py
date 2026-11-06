@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -106,3 +106,79 @@ class MonitoringSummary(BaseModel):
     incidents_active: int
     incidents_critical_active: int
     incidents_awaiting_closure: int
+
+
+# --- Integrations (step 3) -------------------------------------------------
+
+class IngestionJobOut(ORM):
+    id: int
+    number: str
+    trigger: str
+    source: str
+    source_detail: str
+    triggered_by: str
+    status: str
+    started_at: datetime
+    finished_at: datetime | None
+    duration_ms: int | None
+    fetched: int
+    inserted: int
+    updated: int
+    unchanged: int
+    rejected: int
+    error_message: str | None
+
+
+class RejectedRecordOut(BaseModel):
+    id: int
+    record_key: str
+    reasons: list[str]
+    payload: dict | list | str
+    rejected_at: datetime
+
+
+class IngestionJobDetail(IngestionJobOut):
+    rejected_records: list[RejectedRecordOut] = []
+
+
+class IntegrationOut(BaseModel):
+    system: SystemOut
+    last_job: IngestionJobOut | None
+    sync_enabled: bool
+    sync_interval_minutes: int
+    lookback_days: int
+    rejection_threshold: float
+    recalls_total: int
+
+
+class SyncRequest(BaseModel):
+    source: Literal["live", "sample", "sample_with_errors"] = "live"
+
+
+class RecallOut(ORM):
+    recall_number: str
+    event_id: str | None
+    classification: str
+    status: str
+    product_type: str
+    product_description: str
+    reason_for_recall: str
+    recalling_firm: str
+    city: str | None
+    state: str | None
+    country: str | None
+    distribution_pattern: str | None
+    code_info: str | None
+    product_quantity: str | None
+    voluntary_mandated: str | None
+    recall_initiation_date: date | None
+    report_date: date
+    termination_date: date | None
+    source: str
+    first_seen_at: datetime
+    updated_at: datetime
+
+
+class RecallPage(BaseModel):
+    total: int
+    items: list[RecallOut]

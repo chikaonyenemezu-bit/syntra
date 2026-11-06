@@ -1,6 +1,6 @@
 # User Requirements Specification (URS)
 
-**System:** Syntra (Connected Systems Intelligence) · **Version:** 0.1 (draft) · **Scope of this version:** Monitoring, incidents, access control, audit trail
+**System:** Syntra (Connected Systems Intelligence) · **Version:** 0.2 (draft) · **Scope of this version:** Monitoring, incidents, access control, audit trail, external data integration
 
 | Field | Value |
 |---|---|
@@ -46,3 +46,17 @@
 | URS-AUD-02 | Audit records shall not be modifiable or deletable through the application or the database. | High |
 | URS-AUD-03 | Tampering with audit records shall be detectable by a verification function available to QA. | High |
 | URS-AUD-04 | The audit history of a record shall be viewable by authorised users. | Medium |
+
+## 5. External data integration (openFDA drug recalls)
+
+| ID | Requirement | Priority |
+|---|---|---|
+| URS-INT-01 | The platform shall import drug recall records from the openFDA enforcement API on a configurable schedule, and on demand by authorised users. | High |
+| URS-INT-02 | Every import run shall be recorded with source, trigger, user, start and end time, and the number of records fetched, inserted, updated, unchanged and rejected. | High |
+| URS-INT-03 | Each record shall be validated before it is stored: required fields, allowed classification and status values, product type, recall number format, valid and non-future dates, termination not before initiation, no duplicates within a run. | High |
+| URS-INT-04 | Records that fail validation shall not be stored as recalls. They shall be kept in quarantine with the original content and every reason for rejection. | High |
+| URS-INT-05 | A recall that changes in the source shall be updated, and the changed fields with old and new values shall be recorded in the audit trail. Re-importing unchanged data shall not create duplicates. | High |
+| URS-INT-06 | A failed import shall mark the integration *down*; a rejection rate above the configured threshold shall mark it *degraded*; both shall open an incident through the incident workflow. | High |
+| URS-INT-07 | When no import has succeeded for more than twice the schedule interval, the integration shall be marked *degraded*. | Medium |
+| URS-INT-08 | Authorised users shall be able to search stored recalls by product, firm, reason, recall number and lot information, and filter by classification. | Medium |
+| URS-INT-09 | Only IT Operations and administrators shall be able to start an import manually. | High |

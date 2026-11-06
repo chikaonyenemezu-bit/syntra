@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from sqlalchemy import select
 
+from app.models._time import utcnow
 from app.models.incident import Incident, Severity
 from app.models.system import System, SystemStatus
 from app.services.health_monitor import Heartbeat, check_timeouts, evaluate, record_heartbeat
@@ -78,7 +79,8 @@ def test_worker_cycle_with_injected_fault(db):
     simulate_and_monitor(db)
     db.commit()
     assert s.status == SystemStatus.DOWN
-    others = db.scalars(select(System).where(System.code != "MES-01")).all()
+    others = db.scalars(select(System).where(System.code != "MES-01",
+                                             System.system_type != "INTEGRATION")).all()
     assert all(o.status == SystemStatus.OPERATIONAL for o in others)
 
 
@@ -87,4 +89,12 @@ def test_summary_and_fault_api(client, login):
     r = client.post("/api/monitoring/simulators/LIMS-01/fault", json={"mode": "degraded"}, headers=ops)
     assert r.status_code == 200 and r.json()["simulated_fault"] == "degraded"
     r = client.get("/api/monitoring/summary", headers=ops)
-    assert r.status_code == 200 and r.json()["systems_total"] == 3
+    assert r.status_code == 200 and r.json()["systems_total"] == 4  # MES, LIMS, ERP + openFDA integration
+
+
+def test_integration_is_not_marked_down_by_heartbeat_timeout(db):
+    fda = db.scalars(select(System).where(System.code == "INT-FDA-01")).one()
+    fda.status = SystemStatus.OPERATIONAL
+    fda.last_heartbeat_at = utcnow() - timedelta(hours=1)  # last sync an hour ago is normal
+    check_timeouts(db)
+    assert fda.status == SystemStatus.OPERATIONAL

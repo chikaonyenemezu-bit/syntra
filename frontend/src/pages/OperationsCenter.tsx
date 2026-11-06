@@ -70,7 +70,9 @@ export function OperationsCenter({ user }: { user: User }) {
       )}
 
       <section className="systems">
-        {systems.map((s) => (
+        {[...systems]
+          .sort((a, b) => Number(a.system_type === "INTEGRATION") - Number(b.system_type === "INTEGRATION"))
+          .map((s) => (
           <SystemCard key={s.code} system={s} tick={tick} canInjectFault={can.injectFault(user)}
                       onFaultChanged={() => refresh().catch(() => undefined)} />
         ))}

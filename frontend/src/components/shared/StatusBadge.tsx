@@ -5,6 +5,8 @@ const TONE: Record<string, string> = {
   degraded: "warn", medium: "warn", acknowledged: "info",
   down: "bad", critical: "bad", high: "bad", open: "bad",
   unknown: "muted", low: "muted",
+  succeeded: "ok", partial: "warn", failed: "bad", running: "info",
+  "Class I": "bad", "Class II": "warn", "Class III": "muted",
 };
 
 export function StatusBadge({ value }: { value: string }) {

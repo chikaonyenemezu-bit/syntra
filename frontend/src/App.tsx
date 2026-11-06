@@ -3,23 +3,37 @@ import { api, auth } from "./services/api";
 import type { User } from "./types";
 import { Login } from "./pages/Login";
 import { OperationsCenter } from "./pages/OperationsCenter";
+import { IntegrationsIncidents } from "./pages/IntegrationsIncidents";
 
-const NAV = [
-  { name: "Operations Center", ready: true },
-  { name: "Integrations & Incidents", ready: false },
-  { name: "GxP Lifecycle", ready: false },
-  { name: "Knowledge Assistant", ready: false },
+type Page = "operations" | "integrations";
+
+const NAV: { name: string; page: Page | null }[] = [
+  { name: "Operations Center", page: "operations" },
+  { name: "Integrations & Incidents", page: "integrations" },
+  { name: "GxP Lifecycle", page: null },
+  { name: "Knowledge Assistant", page: null },
 ];
+
+function pageFromHash(): Page {
+  return window.location.hash === "#/integrations" ? "integrations" : "operations";
+}
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState<Page>(pageFromHash);
 
   const loadUser = () => {
     if (!auth.token) { setLoading(false); return; }
     api.me().then(setUser).catch(() => setUser(null)).finally(() => setLoading(false));
   };
   useEffect(loadUser, []);
+
+  useEffect(() => {
+    const onHash = () => setPage(pageFromHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
 
   if (loading) return null;
   if (!user) return <Login onLoggedIn={loadUser} />;
@@ -32,12 +46,15 @@ export default function App() {
           <span className="brand-tag">Connected Systems Intelligence</span>
         </div>
         <nav aria-label="Main">
-          {NAV.map((n) => (
-            <a key={n.name} href="#" aria-current={n.ready ? "page" : undefined}
-               className={n.ready ? "nav-item active" : "nav-item disabled"}
-               onClick={(e) => e.preventDefault()} aria-disabled={!n.ready}>
-              {n.name}{!n.ready && <span className="soon">next</span>}
+          {NAV.map((n) => n.page ? (
+            <a key={n.name} href={`#/${n.page}`} aria-current={page === n.page ? "page" : undefined}
+               className={page === n.page ? "nav-item active" : "nav-item"}>
+              {n.name}
             </a>
+          ) : (
+            <span key={n.name} className="nav-item disabled" aria-disabled="true">
+              {n.name}<span className="soon">next</span>
+            </span>
           ))}
         </nav>
         <div className="me">
@@ -46,7 +63,9 @@ export default function App() {
           <button className="link small" onClick={() => { auth.set(null); setUser(null); }}>Sign out</button>
         </div>
       </aside>
-      <main className="main"><OperationsCenter user={user} /></main>
+      <main className="main">
+        {page === "integrations" ? <IntegrationsIncidents user={user} /> : <OperationsCenter user={user} />}
+      </main>
     </div>
   );
 }

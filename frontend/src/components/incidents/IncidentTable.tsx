@@ -20,8 +20,8 @@ export function IncidentTable({ incidents, onOpen }: Props) {
         <tbody>
           {incidents.map((i) => (
             <tr key={i.id}>
-              <td><button className="link" onClick={() => onOpen(i)}>{i.number}</button></td>
-              <td>{i.system_code ?? "–"}</td>
+              <td className="nowrap"><button className="link" onClick={() => onOpen(i)}>{i.number}</button></td>
+              <td className="nowrap">{i.system_code ?? "–"}</td>
               <td className="title-cell">
                 {i.title}
                 {i.recovered_at && i.status !== "closed" && <span className="tag tag-ok">Recovered</span>}

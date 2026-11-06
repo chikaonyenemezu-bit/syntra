@@ -1,5 +1,6 @@
 import type {
-  AuditEvent, ChainCheck, FaultMode, Incident, Severity, Summary, System, Telemetry, User,
+  AuditEvent, ChainCheck, FaultMode, Incident, IngestionJob, IngestionJobDetail, Integration, Recall,
+  RecallPage, Severity, Summary, SyncSource, System, Telemetry, User,
 } from "../types";
 
 const TOKEN_KEY = "syntra_token";
@@ -64,4 +65,11 @@ export const api = {
   audit: (params: Record<string, string> = {}) =>
     request<AuditEvent[]>(`/api/audit?${new URLSearchParams(params)}`),
   verifyAudit: () => request<ChainCheck>("/api/audit/verify"),
+
+  integrations: () => request<Integration[]>("/api/integrations"),
+  sync: (code: string, source: SyncSource) => post<IngestionJobDetail>(`/api/integrations/${code}/sync`, { source }),
+  jobs: (limit = 25) => request<IngestionJob[]>(`/api/integrations/jobs?limit=${limit}`),
+  job: (number: string) => request<IngestionJobDetail>(`/api/integrations/jobs/${number}`),
+  recalls: (params: Record<string, string>) => request<RecallPage>(`/api/recalls?${new URLSearchParams(params)}`),
+  recall: (number: string) => request<Recall>(`/api/recalls/${number}`),
 };

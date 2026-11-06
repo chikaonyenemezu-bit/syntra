@@ -18,3 +18,12 @@ URS-AUD-01,All changes audited,app/services/audit_logger.py::log_event,tests/tes
 URS-AUD-02,Append-only at database level,app/models/audit_event.py::install_append_only_guard,tests/test_audit.py::test_update_is_blocked_by_database; tests/test_audit.py::test_delete_is_blocked_by_database; smoke_pg.py
 URS-AUD-03,Tamper detection,app/services/audit_logger.py::verify_chain,tests/test_audit.py::test_tampering_around_the_guard_is_detected
 URS-AUD-04,Audit history viewable,app/api/audit.py,tests/test_audit.py::test_audit_api_and_verify_endpoint
+URS-INT-01,Scheduled and on-demand import,app/worker/jobs.py::fda_sync; app/api/integrations.py::sync_now; app/integrations/openfda.py::OpenFDASource,tests/test_fda_pipeline.py::test_client_pages_through_results; tests/test_integrations_api.py::test_sync_job_detail_shows_rejected_records
+URS-INT-02,Import runs recorded,app/models/ingestion_job.py; app/services/fda_pipeline.py::run_sync,tests/test_fda_pipeline.py::test_clean_sample_imports_everything; tests/test_integrations_api.py::test_sync_job_detail_shows_rejected_records
+URS-INT-03,Record validation rules,app/services/data_validator.py::validate_recall,tests/test_data_validator.py::test_rule_rejects_with_reason; tests/test_data_validator.py::test_all_reasons_reported_at_once
+URS-INT-04,Quarantine of invalid records,app/services/fda_pipeline.py::run_sync; app/models/ingestion_job.py::RejectedRecord,tests/test_fda_pipeline.py::test_invalid_records_are_quarantined_with_reasons
+URS-INT-05,Change detection and audit; idempotent re-import,app/services/fda_pipeline.py::run_sync,tests/test_fda_pipeline.py::test_changed_recall_is_updated_and_audited; tests/test_fda_pipeline.py::test_second_run_is_idempotent
+URS-INT-06,Integration health and incidents,app/services/fda_pipeline.py::run_sync,tests/test_fda_pipeline.py::test_failed_fetch_marks_job_failed_and_opens_critical_incident; tests/test_fda_pipeline.py::test_high_rejection_rate_degrades_integration_and_opens_incident; smoke_pg.py
+URS-INT-07,Staleness detection,app/services/fda_pipeline.py::check_staleness,tests/test_fda_pipeline.py::test_staleness_degrades_integration
+URS-INT-08,Recall search,app/api/recalls.py::search_recalls,tests/test_integrations_api.py::test_recall_search
+URS-INT-09,Sync restricted to IT Ops and admin,app/api/integrations.py::sync_now,tests/test_integrations_api.py::test_only_it_ops_and_admin_can_sync

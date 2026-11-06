@@ -64,7 +64,8 @@ def check_timeouts(db: Session) -> list[System]:
     now = utcnow()
     limit = timedelta(seconds=settings.heartbeat_timeout_seconds)
     timed_out = []
-    for system in db.scalars(select(System)):
+    # Integrations report through sync jobs, not heartbeats (see fda_pipeline.check_staleness).
+    for system in db.scalars(select(System).where(System.system_type != "INTEGRATION")):
         last = as_utc(system.last_heartbeat_at)
         if last is None or system.status == SystemStatus.DOWN:
             continue

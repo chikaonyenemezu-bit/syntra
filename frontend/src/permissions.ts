@@ -13,6 +13,7 @@ export const can = {
   injectFault: (u: User) => u.role === "it_ops" || u.role === "admin",
   viewAudit: (u: User) => ["qa", "admin", "it_ops"].includes(u.role),
   verifyAudit: (u: User) => u.role === "qa" || u.role === "admin",
+  syncIntegration: (u: User) => u.role === "it_ops" || u.role === "admin",
 };
 
 export function closeBlockedReason(u: User, i: Incident): string | null {
