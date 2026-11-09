@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useEscape } from "../shared/useEscape";
 import { api, ApiError } from "../../services/api";
 import { can, closeBlockedReason } from "../../permissions";
 import { fmtTime, label } from "../../format";
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export function IncidentDrawer({ incident: inc, user, onClose, onChanged }: Props) {
+  useEscape(onClose);
   const [history, setHistory] = useState<AuditEvent[]>([]);
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);

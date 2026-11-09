@@ -263,3 +263,6 @@ tr.detail-row td { background: var(--bg); }
 .doc-section h3 { font-size: 15px; margin-bottom: 6px; }
 .doc-section.cited { background: var(--accent-soft); border-left-color: var(--accent); }
 a.tag { color: var(--accent); text-decoration: none; }
+.rt-heading { margin: 4px 0 6px; font-size: 15px; }
+.rt-table { margin: 0 0 10px; font-size: 13.5px; }
+.rt-table th, .rt-table td { padding: 6px 8px; }

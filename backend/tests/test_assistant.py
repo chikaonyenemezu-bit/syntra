@@ -279,3 +279,18 @@ def test_provider_choice_follows_configured_key(monkeypatch):
     monkeypatch.setattr(settings, "llm_provider", "groq")
     assert resolve_config().provider == "groq"                # unless chosen explicitly
     assert "gsk_x" not in repr(resolve_config())              # the key never appears in logs/reprs
+
+
+def test_typographic_hyphens_are_understood(db, use_llm):
+    """gpt-oss writes non-breaking hyphens (U+2011): references and system codes must still match."""
+    fake = use_llm("groq", [
+        groq_tools(("get_system_status", {"system_code": "MES\u201101"})),
+        groq_text("MES\u201101 is down \u2013 inform QA [RB\u2011MES\u2011001 \u00a72]."),
+    ])
+    q = assistant.ask(db, user(db), "What do I do when MES\u201101 is down?")
+    tool = json.loads(q.tool_calls)[0]
+    assert tool["ok"] and tool["summary"].startswith("MES-01")
+    assert q.answer == "MES-01 is down \u2013 inform QA [RB-MES-001 \u00a72]."   # en dash in prose is kept
+    assert [(c["ref"], c["valid"]) for c in json.loads(q.citations)] == [("RB-MES-001 \u00a72", True)]
+    assert "RB-MES-001" in fake.requests[0]["body"]["messages"][1]["content"]  # runbook linked despite U+2011
+    assert "No headings, no tables" in fake.requests[0]["body"]["messages"][0]["content"]

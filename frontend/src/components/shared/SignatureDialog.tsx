@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useEscape } from "./useEscape";
 import { ApiError } from "../../services/api";
 import type { User } from "../../types";
 
@@ -19,6 +20,7 @@ export function SignatureDialog({ user, title, meaning, textLabel, textMin = 0, 
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  useEscape(onCancel);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

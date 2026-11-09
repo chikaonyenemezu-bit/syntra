@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useEscape } from "../shared/useEscape";
 import { api, ApiError } from "../../services/api";
 import { can } from "../../permissions";
 import { fmtTime, label, ROLE_LABEL } from "../../format";
@@ -23,6 +24,7 @@ export function ChangeDrawer({ number, user, onClose, onChanged }: Props) {
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  useEscape(onClose, dialog === null);   // with a signature dialog open, Escape closes the dialog first
 
   useEffect(() => { api.change(number).then(setCr).catch(() => setCr(null)); }, [number]);
   useEffect(() => {

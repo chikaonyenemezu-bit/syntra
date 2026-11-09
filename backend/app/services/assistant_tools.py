@@ -17,6 +17,8 @@ from app.models.system import System
 from app.services import lifecycle_manager, retrieval
 from app.services.llm import ToolSpec
 
+_HYPHENS = str.maketrans({"\u2010": "-", "\u2011": "-", "\u2012": "-", "\u2212": "-", "\u00ad": None})
+
 OPEN_CHANGES = [ChangeStatus.DRAFT, ChangeStatus.IN_REVIEW, ChangeStatus.APPROVED, ChangeStatus.IMPLEMENTED]
 
 TOOLS = [
@@ -83,8 +85,10 @@ class ToolBox:
         if fn is None:
             self.runs.append(ToolRun(name, args, "unknown tool", ok=False))
             return json.dumps({"error": f"Unknown tool '{name}'"})
+        # "MES‑01" with a typographic hyphen must find MES-01 (see assistant.normalize_text)
+        args = {k: v.translate(_HYPHENS) if isinstance(v, str) else v for k, v in args.items() if isinstance(k, str)}
         try:
-            result, summary = fn(**{k: v for k, v in args.items() if isinstance(k, str)})
+            result, summary = fn(**args)
         except TypeError as e:
             self.runs.append(ToolRun(name, args, "invalid arguments", ok=False))
             return json.dumps({"error": f"Invalid arguments: {e}"})

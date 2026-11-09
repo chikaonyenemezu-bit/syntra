@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useEscape } from "../shared/useEscape";
 import { api } from "../../services/api";
 import { fmtDate } from "../../format";
 import type { KnowledgeDocDetail } from "../../types";
@@ -7,6 +8,7 @@ import { RichText } from "./RichText";
 const TYPE_LABEL = { sop: "SOP", runbook: "Runbook", regulation: "Regulatory notes" };
 
 export function DocumentViewer({ docId, section, onClose }: { docId: string; section: string | null; onClose: () => void }) {
+  useEscape(onClose);
   const [doc, setDoc] = useState<KnowledgeDocDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const body = useRef<HTMLDivElement>(null);

@@ -159,7 +159,7 @@ frontend (React + TypeScript, nginx) ──/api──▶ api (FastAPI)
 | `backend/app/knowledge` | Controlled documents (Markdown) and the retrieval evaluation set |
 | `backend/app/simulators` | MES, LIMS and ERP heartbeat simulators |
 | `backend/app/worker` | Scheduled monitoring cycle |
-| `backend/tests` | 88 tests: monitoring, incident rules, permissions, audit integrity, validation rules, sync pipeline, openFDA client, change control, segregation of duties, e-signatures, periodic reviews, document indexing, retrieval evaluation, Claude, OpenAI and Groq tool loops, citation checks, read-only tools |
+| `backend/tests` | 89 tests: monitoring, incident rules, permissions, audit integrity, validation rules, sync pipeline, openFDA client, change control, segregation of duties, e-signatures, periodic reviews, document indexing, retrieval evaluation, Claude, OpenAI and Groq tool loops, citation checks, read-only tools |
 | `validation/` | URS and traceability matrix (requirement → code → test) |
 
 ## Configuration

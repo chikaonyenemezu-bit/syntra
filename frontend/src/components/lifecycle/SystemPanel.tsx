@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useEscape } from "../shared/useEscape";
 import { api } from "../../services/api";
 import { can } from "../../permissions";
 import { fmtDate } from "../../format";
@@ -21,6 +22,7 @@ export function SystemPanel({ code, user, changes, onClose, onChanged, onOpenCha
   const [lc, setLc] = useState<LifecycleDetail | null>(null);
   const [outcome, setOutcome] = useState<"remains_validated" | "remediation_required">("remains_validated");
   const [signing, setSigning] = useState(false);
+  useEscape(onClose, !signing);
 
   useEffect(() => { api.lifecycleDetail(code).then(setLc).catch(() => setLc(null)); }, [code]);
   if (!lc) return null;
