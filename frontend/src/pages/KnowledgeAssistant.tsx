@@ -14,6 +14,16 @@ const SUGGESTIONS = [
 ];
 
 const PROVIDER = { anthropic: "Claude", openai: "OpenAI", groq: "Groq" };
+
+// "New conversation" hides earlier answers on this browser; they stay recorded in Syntra.
+const START_KEY = "syntra_chat_after";
+const seq = (number: string) => Number(number.replace(/\D/g, "")) || 0;
+function loadStart(): number {
+  try { return Number(localStorage.getItem(START_KEY)) || 0; } catch { return 0; }
+}
+function saveStart(n: number) {
+  try { if (n) localStorage.setItem(START_KEY, String(n)); else localStorage.removeItem(START_KEY); } catch { /* unavailable */ }
+}
 const TYPE_LABEL = { sop: "SOPs", runbook: "Runbooks", regulation: "Regulatory notes" };
 
 export function KnowledgeAssistant({ user, initialQuestion }: { user: User; initialQuestion: string | null }) {
@@ -24,6 +34,9 @@ export function KnowledgeAssistant({ user, initialQuestion }: { user: User; init
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [viewer, setViewer] = useState<{ docId: string; section: string | null } | null>(null);
+  const [after, setAfter] = useState<number>(loadStart);
+  const shown = answers.filter((a) => seq(a.number) > after);
+  const hidden = answers.length - shown.length;
   const end = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -32,13 +45,21 @@ export function KnowledgeAssistant({ user, initialQuestion }: { user: User; init
     api.myQueries().then(setAnswers).catch(() => undefined);
   }, []);
   useEffect(() => { if (initialQuestion) setQuestion(initialQuestion); }, [initialQuestion]);
-  useEffect(() => { end.current?.scrollIntoView({ block: "end" }); }, [answers.length, busy]);
+  useEffect(() => { if (shown.length) end.current?.scrollIntoView({ block: "end" }); }, [shown.length, busy]);
+
+  function newConversation() {
+    const last = answers.length ? seq(answers[answers.length - 1].number) : 0;
+    setAfter(last); saveStart(last); setQuestion(""); setError(null);
+    window.scrollTo({ top: 0 });
+  }
+  function showEarlier() { setAfter(0); saveStart(0); }
 
   async function ask(q: string) {
     const text = q.trim();
     if (text.length < 3 || busy) return;
     setBusy(true); setError(null);
-    const history = answers.filter((a) => a.answer).slice(-4).map((a) => ({ question: a.question, answer: a.answer! }));
+    // only the current conversation is sent as context, never answers hidden by "New conversation"
+    const history = shown.filter((a) => a.answer).slice(-4).map((a) => ({ question: a.question, answer: a.answer! }));
     try {
       const a = await api.ask(text, history);
       setAnswers((xs) => [...xs, a]);
@@ -79,7 +100,15 @@ export function KnowledgeAssistant({ user, initialQuestion }: { user: User; init
 
       <div className="assistant-layout">
         <section className="conversation" aria-label="Conversation">
-          {answers.length === 0 && !busy && (
+          {(shown.length > 0 || hidden > 0) && (
+            <div className="conversation-bar">
+              {hidden > 0
+                ? <button className="link small" onClick={showEarlier}>Show {hidden} earlier question{hidden > 1 ? "s" : ""}</button>
+                : <span />}
+              {shown.length > 0 && <button onClick={newConversation}>New conversation</button>}
+            </div>
+          )}
+          {shown.length === 0 && !busy && (
             <div className="card empty-chat">
               <h2>Ask about procedures, systems or recalls</h2>
               <p className="muted small">The assistant reads documents and live data, but it cannot change anything in Syntra.</p>
@@ -88,7 +117,7 @@ export function KnowledgeAssistant({ user, initialQuestion }: { user: User; init
               </div>
             </div>
           )}
-          {answers.map((a) => (
+          {shown.map((a) => (
             <AnswerCard key={a.number} a={a} mine={a.asked_by === user.username} onOpenRef={openRef}
                         onUpdated={(u) => setAnswers((xs) => xs.map((x) => (x.number === u.number ? u : x)))} />
           ))}

@@ -1,12 +1,14 @@
 import type { ReactNode } from "react";
 
 const H = "[-\u2010-\u2015\u2212]";   // plain or typographic hyphen
-const REF = new RegExp(`(?:SOP|RB|REF)${H}[A-Z]+${H}\\d{3}\\s*§\\s*\\d+(?:\\.\\d+)*`, "g");
+const REF_SRC = `(?:SOP|RB|REF)${H}[A-Z]+${H}\\d{3}\\s*§\\s*\\d+(?:\\.\\d+)*`;
+const REF = new RegExp(REF_SRC, "g");
 const HEADING = /^\s*#{1,6}\s+(.+?)\s*#*\s*$/;
 const TABLE_ROW = /^\s*\|.*\|\s*$/;
 const TABLE_SEP = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/;
 const RULE = /^\s*(-{3,}|\*{3,}|_{3,})\s*$/;
-const INLINE = /\*\*([^*]+)\*\*|\[([^[\]]+)\]/g;
+// **bold**, [bracketed text or references], *italic*, or a bare reference such as "RB-MES-001 §2"
+const INLINE = new RegExp(`\\*\\*([^*]+)\\*\\*|\\[([^[\\]]+)\\]|\\*([^*\\n]+)\\*|(${REF_SRC})`, "g");
 const OL_ITEM = /^\s*\d+[.)]\s+/;
 const UL_ITEM = /^\s*[-*•]\s+/;
 
@@ -60,9 +62,10 @@ export function RichText({ text, validRefs, onCite }: Props) {
     let last = 0, n = 0;
     for (const m of line.matchAll(INLINE)) {
       if (m.index! > last) out.push(line.slice(last, m.index));
-      if (m[1]) out.push(<strong key={`${key}b${n++}`}>{m[1]}</strong>);
+      if (m[1]) out.push(<strong key={`${key}b${n++}`}>{inline(m[1], `${key}b${n}`)}</strong>);
+      else if (m[3]) out.push(<em key={`${key}i${n++}`}>{inline(m[3], `${key}i${n}`)}</em>);
       else {
-        const refs = m[2].match(REF);
+        const refs = (m[2] ?? m[4]).match(REF);
         if (!refs) out.push(m[0]);
         else refs.map(normRef).forEach((ref) => {
           const valid = !validRefs || validRefs.has(ref);
