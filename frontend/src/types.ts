@@ -249,7 +249,7 @@ export interface NewChange {
 
 export interface AssistantStatus {
   mode: "llm" | "retrieval";
-  provider: "anthropic" | "openai" | null;
+  provider: "anthropic" | "openai" | "groq" | null;
   model: string | null;
   documents: number;
   sections: number;

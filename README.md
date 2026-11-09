@@ -47,7 +47,7 @@ to automated tests.
 - **Knowledge Assistant:** answers questions from 11 controlled documents (SOPs for incidents, change
   control, periodic review, e-signatures and audit trail review; runbooks for MES, LIMS, ERP and the
   openFDA interface; reference notes on 21 CFR Part 11 and EU GMP Annex 11), combined with live data.
-  Works with Claude or OpenAI. Every citation is checked against the sections the model was given, and
+  Works with Claude, OpenAI or Groq. Every citation is checked against the sections the model was given, and
   unverifiable ones are flagged. The model can only *read* Syntra data. Without an API key it still
   shows the matching sections. Every question is recorded, and answers can be rated.
 
@@ -110,7 +110,9 @@ Add one API key to `.env` (never commit it; `.env` is git-ignored), then restart
 ANTHROPIC_API_KEY=sk-ant-...      # Claude (default model claude-sonnet-5-5)
 # or
 OPENAI_API_KEY=sk-...             # OpenAI Responses API (default model gpt-6-luna)
-LLM_MODEL=                        # optional: another model name
+# or
+GROQ_API_KEY=gsk_...              # Groq, OpenAI-compatible (default model openai/gpt-oss-120b)
+LLM_MODEL=                        # optional: another model name, e.g. llama-3.3-70b-versatile on Groq
 ```
 
 ```bash
@@ -157,7 +159,7 @@ frontend (React + TypeScript, nginx) ──/api──▶ api (FastAPI)
 | `backend/app/knowledge` | Controlled documents (Markdown) and the retrieval evaluation set |
 | `backend/app/simulators` | MES, LIMS and ERP heartbeat simulators |
 | `backend/app/worker` | Scheduled monitoring cycle |
-| `backend/tests` | 85 tests: monitoring, incident rules, permissions, audit integrity, validation rules, sync pipeline, openFDA client, change control, segregation of duties, e-signatures, periodic reviews, document indexing, retrieval evaluation, Claude and OpenAI tool loops, citation checks, read-only tools |
+| `backend/tests` | 88 tests: monitoring, incident rules, permissions, audit integrity, validation rules, sync pipeline, openFDA client, change control, segregation of duties, e-signatures, periodic reviews, document indexing, retrieval evaluation, Claude, OpenAI and Groq tool loops, citation checks, read-only tools |
 | `validation/` | URS and traceability matrix (requirement → code → test) |
 
 ## Configuration
@@ -199,7 +201,7 @@ report as test evidence.
 | 2 | Simulators, health monitoring, incidents, Operations Center | Done |
 | 3 | openFDA recall integration with data validation, quarantine, job history, integration incidents | Done |
 | 4 | GxP Lifecycle: system inventory, change control with dual approval, periodic review, electronic signatures | Done |
-| 5 | Knowledge Assistant: cited answers from controlled documents and live data, Claude or OpenAI | Done |
+| 5 | Knowledge Assistant: cited answers from controlled documents and live data, Claude, OpenAI or Groq | Done |
 | 6 | Demo scenario script, end-to-end test, risk assessment, test protocol, Alembic migrations | Next |
 
 ## Disclaimer

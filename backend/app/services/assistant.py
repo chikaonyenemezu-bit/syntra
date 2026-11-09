@@ -83,7 +83,7 @@ def _passage_json(p: retrieval.Passage) -> dict:
             "version": p.version, "excerpt": p.excerpt(), "score": p.score}
 
 
-MAX_CONTEXT = 8
+MAX_CONTEXT = 10
 
 
 def retrieval_query(db: Session, question: str) -> tuple[str, list[str]]:
@@ -106,18 +106,17 @@ def retrieval_query(db: Session, question: str) -> tuple[str, list[str]]:
 
 
 def gather_context(db: Session, question: str, k: int) -> list[retrieval.Passage]:
-    """Best-matching sections, plus the runbook of every system the question refers to (its title
-    names the system), because that is the document an operator needs first."""
+    """The runbook of every system the question refers to (its title names the system), because that
+    is the document an operator needs first, plus the k best-matching sections of all documents.
+    When a runbook is linked, the search runs without the system codes: a code is so specific that it
+    would otherwise pull every hit into that one runbook and crowd out the general procedures."""
     search_text, codes = retrieval_query(db, question)
     linked = [p for p in retrieval.get_index(db).passages
               if p.doc_type == "runbook" and any(c in p.title for c in codes)]
-    hits = retrieval.search(db, search_text, k=k)
-    seen, out = set(), []
-    for p in [*linked, *hits]:
-        if p.ref not in seen:
-            seen.add(p.ref)
-            out.append(p)
-    return out[:max(k, MAX_CONTEXT if linked else k)]
+    if linked:
+        search_text = SYSTEM_CODE.sub(" ", search_text)
+    hits = [h for h in retrieval.search(db, search_text, k=k + len(linked)) if h.doc_id not in {p.doc_id for p in linked}]
+    return (linked + hits[:k])[:MAX_CONTEXT]
 
 
 def status() -> dict:

@@ -60,6 +60,7 @@ def claude_tools(*calls, i=100, o=20):
 def test_retrieval_only_without_api_key(db, monkeypatch):
     monkeypatch.setattr(settings, "anthropic_api_key", "")
     monkeypatch.setattr(settings, "openai_api_key", "")
+    monkeypatch.setattr(settings, "groq_api_key", "")
     assert assistant.status()["mode"] == "retrieval"
     q = assistant.ask(db, user(db), "Who closes an incident on a GxP system?")
     db.commit()
@@ -187,6 +188,7 @@ def test_bad_tool_calls_are_contained(db):
 def test_ask_api_and_feedback(client, login, monkeypatch):
     monkeypatch.setattr(settings, "anthropic_api_key", "")
     monkeypatch.setattr(settings, "openai_api_key", "")
+    monkeypatch.setattr(settings, "groq_api_key", "")
     v, ops = login("viewer"), login("it.ops")
     assert client.get("/api/assistant/status", headers=v).json()["documents"] == 11
     assert client.post("/api/assistant/ask", json={"question": "?"}, headers=v).status_code == 422
@@ -205,6 +207,7 @@ def test_ask_api_and_feedback(client, login, monkeypatch):
 def test_question_about_a_record_finds_its_runbook(db, monkeypatch):
     monkeypatch.setattr(settings, "anthropic_api_key", "")
     monkeypatch.setattr(settings, "openai_api_key", "")
+    monkeypatch.setattr(settings, "groq_api_key", "")
     record_heartbeat(db, db.scalars(select(System).where(System.code == "LIMS-01")).one(),
                      Heartbeat("down", 0, 1.0, "Database connection pool exhausted"))
     db.commit()
@@ -212,3 +215,67 @@ def test_question_about_a_record_finds_its_runbook(db, monkeypatch):
     refs = [p["ref"] for p in json.loads(q.passages)]
     assert refs[:2] == ["RB-LIMS-001 §1", "RB-LIMS-001 §2"]      # the system's runbook comes first
     assert len(refs) <= assistant.MAX_CONTEXT
+
+
+# --- Groq (OpenAI-compatible Chat Completions) ------------------------------------------------
+
+def groq_tools(*calls):
+    return 200, {"choices": [{"finish_reason": "tool_calls", "message": {"role": "assistant", "content": None,
+                 "tool_calls": [{"id": f"call_{n}", "type": "function",
+                                 "function": {"name": name, "arguments": json.dumps(args)}}
+                                for n, (name, args) in enumerate(calls)]}}],
+                 "usage": {"prompt_tokens": 700, "completion_tokens": 30}}
+
+
+def groq_text(text):
+    return 200, {"choices": [{"finish_reason": "stop", "message": {"role": "assistant", "content": text}}],
+                 "usage": {"prompt_tokens": 900, "completion_tokens": 120}}
+
+
+def test_groq_tool_loop(db, use_llm):
+    fake = use_llm("groq", [
+        groq_tools(("get_system_status", {"system_code": "LIMS-01"})),
+        groq_text("Syntra shows LIMS-01 as unknown. QA closes GxP incidents [SOP-ITO-001 §7]."),
+    ])
+    q = assistant.ask(db, user(db), "Who closes incidents on LIMS-01?")
+    first, second = fake.requests
+    assert first["url"] == "https://api.groq.com/openai/v1/chat/completions"
+    assert first["headers"]["authorization"] == "Bearer test-key-not-real"
+    assert first["body"]["model"] == "openai/gpt-oss-120b"
+    assert first["body"]["messages"][0]["role"] == "system"
+    assert first["body"]["tools"][0]["type"] == "function" and "parameters" in first["body"]["tools"][0]["function"]
+    assistant_msg, tool_msg = second["body"]["messages"][-2:]
+    assert assistant_msg["tool_calls"][0]["id"] == "call_0"
+    assert (tool_msg["role"], tool_msg["tool_call_id"]) == ("tool", "call_0")
+    assert json.loads(tool_msg["content"])["systems"][0]["code"] == "LIMS-01"
+    assert (q.mode, q.provider, q.model) == ("llm", "groq", "openai/gpt-oss-120b")
+    assert json.loads(q.citations)[0] == {**json.loads(q.citations)[0], "ref": "SOP-ITO-001 §7", "valid": True}
+    assert (q.input_tokens, q.output_tokens) == (1600, 150)
+
+
+def test_groq_retries_malformed_tool_call_once(db, use_llm):
+    failed = (400, {"error": {"message": "Failed to call a function.", "type": "invalid_request_error",
+                              "code": "tool_use_failed"}})
+    fake = use_llm("groq", [failed, groq_text("Answer [SOP-ITO-002 §5].")])
+    q = assistant.ask(db, user(db), "Who approves GxP changes?")
+    assert len(fake.requests) == 2 and q.mode == "llm"
+    fake = use_llm("groq", [failed, failed])
+    q = assistant.ask(db, user(db), "Who approves GxP changes?")
+    assert q.mode == "retrieval" and "HTTP 400" in q.error
+
+
+def test_provider_choice_follows_configured_key(monkeypatch):
+    from app.services.llm import resolve_config
+    for k in ("anthropic_api_key", "openai_api_key", "groq_api_key"):
+        monkeypatch.setattr(settings, k, "")
+    monkeypatch.setattr(settings, "llm_provider", "auto")
+    assert resolve_config().provider is None
+    monkeypatch.setattr(settings, "groq_api_key", "gsk_x")
+    assert (resolve_config().provider, resolve_config().model) == ("groq", "openai/gpt-oss-120b")
+    monkeypatch.setattr(settings, "llm_model", "llama-3.3-70b-versatile")
+    assert resolve_config().model == "llama-3.3-70b-versatile"
+    monkeypatch.setattr(settings, "anthropic_api_key", "sk-ant-x")
+    assert resolve_config().provider == "anthropic"           # several keys: Claude first
+    monkeypatch.setattr(settings, "llm_provider", "groq")
+    assert resolve_config().provider == "groq"                # unless chosen explicitly
+    assert "gsk_x" not in repr(resolve_config())              # the key never appears in logs/reprs

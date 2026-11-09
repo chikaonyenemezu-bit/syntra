@@ -13,7 +13,7 @@ const SUGGESTIONS = [
   "What must an audit trail record under 21 CFR Part 11?",
 ];
 
-const PROVIDER = { anthropic: "Claude", openai: "OpenAI" };
+const PROVIDER = { anthropic: "Claude", openai: "OpenAI", groq: "Groq" };
 const TYPE_LABEL = { sop: "SOPs", runbook: "Runbooks", regulation: "Regulatory notes" };
 
 export function KnowledgeAssistant({ user, initialQuestion }: { user: User; initialQuestion: string | null }) {
@@ -71,7 +71,7 @@ export function KnowledgeAssistant({ user, initialQuestion }: { user: User; init
           <div className={`mode-banner ${status.mode === "llm" ? "mode-llm" : "mode-retrieval"}`}>
             {status.mode === "llm"
               ? <><strong>{PROVIDER[status.provider!]}</strong> <span className="small">{status.model}</span></>
-              : <><strong>Retrieval only</strong><span className="small">Add ANTHROPIC_API_KEY or OPENAI_API_KEY to .env for written answers</span></>}
+              : <><strong>Retrieval only</strong><span className="small">Add ANTHROPIC_API_KEY, OPENAI_API_KEY or GROQ_API_KEY to .env for written answers</span></>}
             <span className="small muted">{status.documents} documents · {status.sections} sections</span>
           </div>
         )}
