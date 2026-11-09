@@ -12,3 +12,7 @@ from app.models.user import User
 
 __all__ = ["AssistantQuery", "AuditEvent", "ChangeRequest", "ESignature", "Incident", "IngestionJob", "KnowledgeChunk", "KnowledgeDocument", "PeriodicReview", "Recall",
            "RejectedRecord", "System", "SystemLifecycle", "Telemetry", "User"]
+from app.models.incident_documentation import (
+    IncidentInvestigation,
+    IncidentQAReview,
+)

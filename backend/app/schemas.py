@@ -1,3 +1,4 @@
+
 from datetime import date, datetime
 from typing import Literal
 
@@ -44,6 +45,8 @@ class TelemetryOut(ORM):
     message: str
 
 
+# --- Incident Management ---------------------------------------------------
+
 class IncidentOut(ORM):
     id: int
     number: str
@@ -76,6 +79,42 @@ class IncidentCreate(BaseModel):
 class ResolveRequest(BaseModel):
     note: str = Field(min_length=10, max_length=4000)
 
+
+# --- GxP Incident Investigation & QA Review (NEW) --------------------------
+
+class InvestigationSubmit(BaseModel):
+    root_cause: str = Field(min_length=20, max_length=8000)
+
+    gxp_impact_assessment: str = Field(
+        min_length=20,
+        max_length=8000,
+    )
+
+    corrective_actions: str = Field(
+        min_length=20,
+        max_length=8000,
+    )
+
+    recovery_verification: str = Field(
+        min_length=20,
+        max_length=8000,
+    )
+
+    evidence_references: str = Field(
+        min_length=10,
+        max_length=4000,
+    )
+
+
+class QAReviewSubmit(BaseModel):
+    decision: Literal["approved", "returned"]
+
+    justification: str = Field(
+        min_length=20,
+        max_length=4000,
+    )
+
+# --- System Monitoring -----------------------------------------------------
 
 class FaultRequest(BaseModel):
     mode: Literal["degraded", "down", "silent"] | None = None
@@ -184,7 +223,7 @@ class RecallPage(BaseModel):
     items: list[RecallOut]
 
 
-# --- GxP lifecycle (step 4) --------------------------------------------------
+# --- GxP Lifecycle (step 4) ------------------------------------------------
 
 class ESignatureOut(ORM):
     id: int
@@ -307,10 +346,10 @@ class VerifyRequest(BaseModel):
     evidence: str = Field(min_length=10, max_length=4000)
 
 
-# --- Knowledge Assistant (step 5) --------------------------------------------
+# --- Knowledge Assistant (step 5) -----------------------------------------
 
 class AssistantStatusOut(BaseModel):
-    mode: str            # llm | retrieval
+    mode: str
     provider: str | None
     model: str | None
     documents: int
@@ -324,7 +363,10 @@ class HistoryTurn(BaseModel):
 
 class AskRequest(BaseModel):
     question: str = Field(min_length=3, max_length=2000)
-    history: list[HistoryTurn] = Field(default_factory=list, max_length=4)
+    history: list[HistoryTurn] = Field(
+        default_factory=list,
+        max_length=4,
+    )
 
 
 class CitationOut(BaseModel):

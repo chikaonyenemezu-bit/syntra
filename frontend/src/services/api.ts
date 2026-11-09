@@ -1,3 +1,4 @@
+
 import type {
   AssistantAnswer, AssistantStatus, KnowledgeDoc, KnowledgeDocDetail,
   AuditEvent, ChainCheck, ChangeRequest, FaultMode, Incident, IngestionJob, IngestionJobDetail, Integration,
@@ -26,77 +27,285 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   if (auth.token) headers.set("Authorization", `Bearer ${auth.token}`);
   if (init.body && typeof init.body === "string") headers.set("Content-Type", "application/json");
+
   const res = await fetch(path, { ...init, headers });
+
   if (!res.ok) {
     let detail = res.statusText;
     try {
       const body = await res.json();
       detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
     } catch { /* not JSON */ }
+
     if (res.status === 401) auth.set(null);
     throw new ApiError(res.status, detail);
   }
+
   return res.json() as Promise<T>;
 }
 
 const post = <T>(path: string, body?: unknown) =>
-  request<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) });
+  request<T>(path, {
+    method: "POST",
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+
+// --------------------------------------------------
+// Incident investigation and QA review types
+// --------------------------------------------------
+
+export interface Investigation {
+  id: number;
+  incident_id: number;
+  revision: number;
+  root_cause: string;
+  gxp_impact_assessment: string;
+  corrective_actions: string;
+  recovery_verification: string;
+  evidence_references: string;
+  submitted_by: string;
+  submitted_at: string;
+}
+
+export type InvestigationSubmit = Pick<
+  Investigation,
+  | "root_cause"
+  | "gxp_impact_assessment"
+  | "corrective_actions"
+  | "recovery_verification"
+  | "evidence_references"
+>;
+
+export interface QAReview {
+  id: number;
+  incident_id: number;
+  investigation_id: number;
+  decision: "approved" | "returned";
+  justification: string;
+  reviewed_by: string;
+  reviewed_at: string;
+}
+
+// --------------------------------------------------
+// API
+// --------------------------------------------------
 
 export const api = {
   async login(username: string, password: string): Promise<void> {
     const form = new URLSearchParams({ username, password });
-    const res = await fetch("/api/auth/login", { method: "POST", body: form });
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      body: form,
+    });
+
     if (!res.ok) throw new ApiError(res.status, "Incorrect username or password");
+
     auth.set((await res.json()).access_token);
   },
+
   me: () => request<User>("/api/auth/me"),
 
   systems: () => request<System[]>("/api/systems"),
-  telemetry: (code: string, limit = 30) => request<Telemetry[]>(`/api/systems/${code}/telemetry?limit=${limit}`),
+
+  telemetry: (code: string, limit = 30) =>
+    request<Telemetry[]>(`/api/systems/${code}/telemetry?limit=${limit}`),
+
   summary: () => request<Summary>("/api/monitoring/summary"),
-  setFault: (code: string, mode: FaultMode) => post<System>(`/api/monitoring/simulators/${code}/fault`, { mode }),
+
+  setFault: (code: string, mode: FaultMode) =>
+    post<System>(`/api/monitoring/simulators/${code}/fault`, { mode }),
+
+  // --------------------------------------------------
+  // Incidents
+  // --------------------------------------------------
 
   incidents: () => request<Incident[]>("/api/incidents"),
-  createIncident: (body: { title: string; description: string; severity: Severity; system_code: string | null }) =>
+
+  createIncident: (body: {
+    title: string;
+    description: string;
+    severity: Severity;
+    system_code: string | null;
+  }) =>
     post<Incident>("/api/incidents", body),
-  acknowledge: (n: string) => post<Incident>(`/api/incidents/${n}/acknowledge`),
-  resolve: (n: string, note: string) => post<Incident>(`/api/incidents/${n}/resolve`, { note }),
-  close: (n: string) => post<Incident>(`/api/incidents/${n}/close`),
+
+  acknowledge: (n: string) =>
+    post<Incident>(`/api/incidents/${n}/acknowledge`),
+
+  resolve: (n: string, note: string) =>
+    post<Incident>(`/api/incidents/${n}/resolve`, { note }),
+
+  close: (n: string) =>
+    post<Incident>(`/api/incidents/${n}/close`),
+
+  // --------------------------------------------------
+  // GxP incident investigations
+  // --------------------------------------------------
+
+  investigations: (n: string) =>
+    request<Investigation[]>(
+      `/api/incidents/${n}/investigations`
+    ),
+
+  submitInvestigation: (n: string, body: InvestigationSubmit) =>
+    post<Investigation>(
+      `/api/incidents/${n}/investigations`,
+      body
+    ),
+
+  // --------------------------------------------------
+  // QA review
+  // --------------------------------------------------
+
+  submitQAReview: (
+    n: string,
+    decision: "approved" | "returned",
+    justification: string
+  ) =>
+    post<QAReview>(
+      `/api/incidents/${n}/qa-review`,
+      { decision, justification }
+    ),
+
+  // --------------------------------------------------
+  // Audit
+  // --------------------------------------------------
 
   audit: (params: Record<string, string> = {}) =>
     request<AuditEvent[]>(`/api/audit?${new URLSearchParams(params)}`),
-  verifyAudit: () => request<ChainCheck>("/api/audit/verify"),
 
-  integrations: () => request<Integration[]>("/api/integrations"),
-  sync: (code: string, source: SyncSource) => post<IngestionJobDetail>(`/api/integrations/${code}/sync`, { source }),
-  jobs: (limit = 25) => request<IngestionJob[]>(`/api/integrations/jobs?limit=${limit}`),
-  job: (number: string) => request<IngestionJobDetail>(`/api/integrations/jobs/${number}`),
-  recalls: (params: Record<string, string>) => request<RecallPage>(`/api/recalls?${new URLSearchParams(params)}`),
-  recall: (number: string) => request<Recall>(`/api/recalls/${number}`),
+  verifyAudit: () =>
+    request<ChainCheck>("/api/audit/verify"),
 
-  lifecycle: () => request<Lifecycle[]>("/api/lifecycle"),
-  lifecycleDetail: (code: string) => request<LifecycleDetail>(`/api/lifecycle/${code}`),
-  recordReview: (code: string, body: { outcome: string; summary: string; password: string }) =>
-    post<LifecycleDetail>(`/api/lifecycle/${code}/reviews`, body),
+  // --------------------------------------------------
+  // Integrations and recalls
+  // --------------------------------------------------
 
-  changes: (openOnly: boolean) => request<ChangeRequest[]>(`/api/changes${openOnly ? "?open_only=true" : ""}`),
-  change: (n: string) => request<ChangeRequest>(`/api/changes/${n}`),
-  createChange: (body: NewChange) => post<ChangeRequest>("/api/changes", body),
-  submitChange: (n: string) => post<ChangeRequest>(`/api/changes/${n}/submit`),
+  integrations: () =>
+    request<Integration[]>("/api/integrations"),
+
+  sync: (code: string, source: SyncSource) =>
+    post<IngestionJobDetail>(
+      `/api/integrations/${code}/sync`,
+      { source }
+    ),
+
+  jobs: (limit = 25) =>
+    request<IngestionJob[]>(`/api/integrations/jobs?limit=${limit}`),
+
+  job: (number: string) =>
+    request<IngestionJobDetail>(`/api/integrations/jobs/${number}`),
+
+  recalls: (params: Record<string, string>) =>
+    request<RecallPage>(
+      `/api/recalls?${new URLSearchParams(params)}`
+    ),
+
+  recall: (number: string) =>
+    request<Recall>(`/api/recalls/${number}`),
+
+  // --------------------------------------------------
+  // GxP lifecycle
+  // --------------------------------------------------
+
+  lifecycle: () =>
+    request<Lifecycle[]>("/api/lifecycle"),
+
+  lifecycleDetail: (code: string) =>
+    request<LifecycleDetail>(`/api/lifecycle/${code}`),
+
+  recordReview: (
+    code: string,
+    body: {
+      outcome: string;
+      summary: string;
+      password: string;
+    }
+  ) =>
+    post<LifecycleDetail>(
+      `/api/lifecycle/${code}/reviews`,
+      body
+    ),
+
+  // --------------------------------------------------
+  // Change management
+  // --------------------------------------------------
+
+  changes: (openOnly: boolean) =>
+    request<ChangeRequest[]>(
+      `/api/changes${openOnly ? "?open_only=true" : ""}`
+    ),
+
+  change: (n: string) =>
+    request<ChangeRequest>(`/api/changes/${n}`),
+
+  createChange: (body: NewChange) =>
+    post<ChangeRequest>("/api/changes", body),
+
+  submitChange: (n: string) =>
+    post<ChangeRequest>(`/api/changes/${n}/submit`),
+
   approveChange: (n: string, password: string, comment: string) =>
-    post<ChangeRequest>(`/api/changes/${n}/approve`, { password, comment }),
-  rejectChange: (n: string, password: string, reason: string) =>
-    post<ChangeRequest>(`/api/changes/${n}/reject`, { password, reason }),
-  implementChange: (n: string, note: string) => post<ChangeRequest>(`/api/changes/${n}/implement`, { note }),
-  verifyChange: (n: string, password: string, evidence: string) =>
-    post<ChangeRequest>(`/api/changes/${n}/verify`, { password, evidence }),
+    post<ChangeRequest>(
+      `/api/changes/${n}/approve`,
+      { password, comment }
+    ),
 
-  assistantStatus: () => request<AssistantStatus>("/api/assistant/status"),
-  ask: (question: string, history: { question: string; answer: string }[]) =>
-    post<AssistantAnswer>("/api/assistant/ask", { question, history }),
-  myQueries: () => request<AssistantAnswer[]>("/api/assistant/queries"),
-  rateAnswer: (n: string, rating: "helpful" | "incorrect", comment = "") =>
-    post<AssistantAnswer>(`/api/assistant/queries/${n}/feedback`, { rating, comment }),
-  documents: () => request<KnowledgeDoc[]>("/api/knowledge/documents"),
-  document: (docId: string) => request<KnowledgeDocDetail>(`/api/knowledge/documents/${docId}`),
+  rejectChange: (n: string, password: string, reason: string) =>
+    post<ChangeRequest>(
+      `/api/changes/${n}/reject`,
+      { password, reason }
+    ),
+
+  implementChange: (n: string, note: string) =>
+    post<ChangeRequest>(
+      `/api/changes/${n}/implement`,
+      { note }
+    ),
+
+  verifyChange: (n: string, password: string, evidence: string) =>
+    post<ChangeRequest>(
+      `/api/changes/${n}/verify`,
+      { password, evidence }
+    ),
+
+  // --------------------------------------------------
+  // Knowledge Assistant
+  // --------------------------------------------------
+
+  assistantStatus: () =>
+    request<AssistantStatus>("/api/assistant/status"),
+
+  ask: (
+    question: string,
+    history: {
+      question: string;
+      answer: string;
+    }[]
+  ) =>
+    post<AssistantAnswer>(
+      "/api/assistant/ask",
+      { question, history }
+    ),
+
+  myQueries: () =>
+    request<AssistantAnswer[]>("/api/assistant/queries"),
+
+  rateAnswer: (
+    n: string,
+    rating: "helpful" | "incorrect",
+    comment = ""
+  ) =>
+    post<AssistantAnswer>(
+      `/api/assistant/queries/${n}/feedback`,
+      { rating, comment }
+    ),
+
+  documents: () =>
+    request<KnowledgeDoc[]>("/api/knowledge/documents"),
+
+  document: (docId: string) =>
+    request<KnowledgeDocDetail>(
+      `/api/knowledge/documents/${docId}`
+    ),
 };
