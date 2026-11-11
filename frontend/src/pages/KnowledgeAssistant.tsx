@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../services/api";
-import type { AssistantAnswer, AssistantStatus, KnowledgeDoc, User } from "../types";
+import type { AssistantAnswer, KnowledgeDoc, User } from "../types";
 import { AnswerCard } from "../components/assistant/AnswerCard";
 import { DocumentViewer } from "../components/assistant/DocumentViewer";
 
@@ -9,60 +9,195 @@ const SUGGESTIONS = [
   "Who must approve a change to a GxP system?",
   "Which periodic reviews are overdue?",
   "Why were records rejected in the last openFDA import?",
-  "Are there any Class I recalls?",
-  "What must an audit trail record under 21 CFR Part 11?",
 ];
 
-const PROVIDER = { anthropic: "Claude", openai: "OpenAI", groq: "Groq" };
+const TYPE_LABEL = {
+  sop: "SOPs",
+  runbook: "Runbooks",
+  regulation: "Regulatory notes",
+};
 
-// "New conversation" hides earlier answers on this browser; they stay recorded in Syntra.
-const START_KEY = "syntra_chat_after";
-const seq = (number: string) => Number(number.replace(/\D/g, "")) || 0;
-function loadStart(): number {
-  try { return Number(localStorage.getItem(START_KEY)) || 0; } catch { return 0; }
-}
-function saveStart(n: number) {
-  try { if (n) localStorage.setItem(START_KEY, String(n)); else localStorage.removeItem(START_KEY); } catch { /* unavailable */ }
-}
-const TYPE_LABEL = { sop: "SOPs", runbook: "Runbooks", regulation: "Regulatory notes" };
+type ChatSession = {
+  id: string;
+  title: string;
+  answerNumbers: string[];
+  updatedAt: string;
+};
 
-export function KnowledgeAssistant({ user, initialQuestion }: { user: User; initialQuestion: string | null }) {
-  const [status, setStatus] = useState<AssistantStatus | null>(null);
+// Syntra already stores answers on the server. Only the grouping of
+// those answers into chats is kept locally, scoped to the signed-in user.
+const sessionKey = (username: string) => `syntra_chat_sessions_v1:${username}`;
+
+function readSessions(username: string): ChatSession[] {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(sessionKey(username)) ?? "[]");
+    if (!Array.isArray(value)) return [];
+    return value.filter((item): item is ChatSession =>
+      item !== null && typeof item === "object" &&
+      typeof item.id === "string" && typeof item.title === "string" &&
+      Array.isArray(item.answerNumbers) &&
+      item.answerNumbers.every((n: unknown) => typeof n === "string") &&
+      typeof item.updatedAt === "string"
+    );
+  } catch {
+    return [];
+  }
+}
+
+function writeSessions(username: string, sessions: ChatSession[]) {
+  try {
+    localStorage.setItem(sessionKey(username), JSON.stringify(sessions));
+  } catch {
+    // Chat grouping cannot be saved if browser storage is unavailable.
+  }
+}
+
+function numberOrder(number: string): number {
+  return Number(number.replace(/\D/g, "")) || 0;
+}
+
+function chatTitle(question: string): string {
+  const text = question.trim();
+  return text.length > 62 ? `${text.slice(0, 59)}…` : text;
+}
+
+function newChatId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `chat-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+export function KnowledgeAssistant({
+  user,
+  initialQuestion,
+}: {
+  user: User;
+  initialQuestion: string | null;
+}) {
   const [docs, setDocs] = useState<KnowledgeDoc[]>([]);
   const [answers, setAnswers] = useState<AssistantAnswer[]>([]);
+  const [sessions, setSessions] = useState<ChatSession[]>(() => readSessions(user.username));
+
+  // Always start on a blank chat, even when the page is refreshed.
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [question, setQuestion] = useState(initialQuestion ?? "");
   const [busy, setBusy] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const [viewer, setViewer] = useState<{ docId: string; section: string | null } | null>(null);
-  const [after, setAfter] = useState<number>(loadStart);
-  const shown = answers.filter((a) => seq(a.number) > after);
-  const hidden = answers.length - shown.length;
   const end = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    api.assistantStatus().then(setStatus).catch(() => undefined);
-    api.documents().then(setDocs).catch(() => undefined);
-    api.myQueries().then(setAnswers).catch(() => undefined);
-  }, []);
-  useEffect(() => { if (initialQuestion) setQuestion(initialQuestion); }, [initialQuestion]);
-  useEffect(() => { if (shown.length) end.current?.scrollIntoView({ block: "end" }); }, [shown.length, busy]);
+    let cancelled = false;
+
+    api.documents().then((items) => {
+      if (!cancelled) setDocs(items);
+    }).catch(() => undefined);
+
+    api.myQueries()
+      .then((items) => {
+        if (cancelled) return;
+        const mine = items
+          .filter((item) => item.asked_by === user.username)
+          .sort((a, b) => numberOrder(a.number) - numberOrder(b.number));
+        setAnswers((current) => {
+          const combined = new Map(current.map((answer) => [answer.number, answer]));
+          mine.forEach((answer) => combined.set(answer.number, answer));
+          return [...combined.values()].sort((a, b) => numberOrder(a.number) - numberOrder(b.number));
+        });
+
+        // Existing individual questions remain accessible. Older questions
+        // that predate chat grouping are displayed as one-question chats.
+        setSessions((current) => {
+          const assigned = new Set(current.flatMap((s) => s.answerNumbers));
+          const previous = mine.filter((answer) => !assigned.has(answer.number)).map((answer) => ({
+            id: `earlier-${answer.number}`,
+            title: chatTitle(answer.question),
+            answerNumbers: [answer.number],
+            updatedAt: answer.asked_at,
+          }));
+          return [...current, ...previous];
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setError("Previous conversations could not be loaded.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingHistory(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [user.username]);
+
+  useEffect(() => {
+    writeSessions(user.username, sessions);
+  }, [sessions, user.username]);
+
+  useEffect(() => {
+    if (initialQuestion) setQuestion(initialQuestion);
+  }, [initialQuestion]);
+
+  const savedChats = [...sessions]
+    .filter((session) => session.answerNumbers.length > 0)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+  const activeSession = sessions.find((session) => session.id === activeSessionId);
+  const answersByNumber = new Map(answers.map((answer) => [answer.number, answer]));
+  const shown = (activeSession?.answerNumbers ?? [])
+    .map((number) => answersByNumber.get(number))
+    .filter((answer): answer is AssistantAnswer => answer !== undefined);
+
+  useEffect(() => {
+    if (shown.length > 0) end.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+  }, [shown.length, busy, activeSessionId]);
 
   function newConversation() {
-    const last = answers.length ? seq(answers[answers.length - 1].number) : 0;
-    setAfter(last); saveStart(last); setQuestion(""); setError(null);
-    window.scrollTo({ top: 0 });
+    setActiveSessionId(null);
+    setQuestion("");
+    setError(null);
+    setLibraryOpen(false);
   }
-  function showEarlier() { setAfter(0); saveStart(0); }
 
-  async function ask(q: string) {
-    const text = q.trim();
-    if (text.length < 3 || busy) return;
-    setBusy(true); setError(null);
-    // only the current conversation is sent as context, never answers hidden by "New conversation"
-    const history = shown.filter((a) => a.answer).slice(-4).map((a) => ({ question: a.question, answer: a.answer! }));
+  function openConversation(id: string) {
+    setActiveSessionId(id);
+    setQuestion("");
+    setError(null);
+    setLibraryOpen(false);
+  }
+
+  async function ask(rawQuestion: string) {
+    const text = rawQuestion.trim();
+    if (text.length < 3 || busy || loadingHistory) return;
+
+    setBusy(true);
+    setError(null);
+    const history = shown
+      .filter((answer) => answer.answer)
+      .slice(-4)
+      .map((answer) => ({ question: answer.question, answer: answer.answer! }));
+
     try {
-      const a = await api.ask(text, history);
-      setAnswers((xs) => [...xs, a]);
+      const answer = await api.ask(text, history);
+      const sessionId = activeSessionId ?? newChatId();
+      const now = new Date().toISOString();
+
+      setAnswers((current) => [...current, answer]);
+      setSessions((current) => {
+        const exists = current.some((session) => session.id === sessionId);
+        if (!exists) {
+          return [...current, {
+            id: sessionId,
+            title: chatTitle(text),
+            answerNumbers: [answer.number],
+            updatedAt: now,
+          }];
+        }
+        return current.map((session) => session.id === sessionId
+          ? { ...session, answerNumbers: [...session.answerNumbers, answer.number], updatedAt: now }
+          : session);
+      });
+      setActiveSessionId(sessionId);
       setQuestion("");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "The assistant could not answer.");
@@ -71,93 +206,194 @@ export function KnowledgeAssistant({ user, initialQuestion }: { user: User; init
     }
   }
 
-  const openRef = (ref: string) => {
+  function openRef(ref: string) {
     const [docId, section] = ref.split(" §");
     setViewer({ docId, section: section ?? null });
-  };
+  }
 
-  const byType = (t: KnowledgeDoc["doc_type"]) => docs.filter((d) => d.doc_type === t);
+  const byType = (type: KnowledgeDoc["doc_type"]) =>
+    docs.filter((doc) => doc.doc_type === type);
 
   return (
-    <div className="page assistant-page">
-      <header className="page-head">
-        <div>
-          <h1>Knowledge Assistant</h1>
-          <p className="muted">
-            Answers from Syntra's controlled SOPs, runbooks and regulatory notes, combined with live system data.
-            Every answer shows its sources.
-          </p>
-        </div>
-        {status && (
-          <div className={`mode-banner ${status.mode === "llm" ? "mode-llm" : "mode-retrieval"}`}>
-            {status.mode === "llm"
-              ? <><strong>{PROVIDER[status.provider!]}</strong> <span className="small">{status.model}</span></>
-              : <><strong>Retrieval only</strong><span className="small">Add ANTHROPIC_API_KEY, OPENAI_API_KEY or GROQ_API_KEY to .env for written answers</span></>}
-            <span className="small muted">{status.documents} documents · {status.sections} sections</span>
+    <div className="page assistant-page chat-page">
+      <div className="chat-layout">
+        <aside className="chat-history" aria-label="Previous conversations">
+          <div className="chat-history-header">
+            <h2>Conversations</h2>
+            <button type="button" className="chat-new" onClick={newConversation}>
+              + New conversation
+            </button>
           </div>
-        )}
-      </header>
-
-      <div className="assistant-layout">
-        <section className="conversation" aria-label="Conversation">
-          {(shown.length > 0 || hidden > 0) && (
-            <div className="conversation-bar">
-              {hidden > 0
-                ? <button className="link small" onClick={showEarlier}>Show {hidden} earlier question{hidden > 1 ? "s" : ""}</button>
-                : <span />}
-              {shown.length > 0 && <button onClick={newConversation}>New conversation</button>}
-            </div>
-          )}
-          {shown.length === 0 && !busy && (
-            <div className="card empty-chat">
-              <h2>Ask about procedures, systems or recalls</h2>
-              <p className="muted small">The assistant reads documents and live data, but it cannot change anything in Syntra.</p>
-              <div className="suggestions">
-                {SUGGESTIONS.map((s) => <button key={s} onClick={() => ask(s)}>{s}</button>)}
-              </div>
-            </div>
-          )}
-          {shown.map((a) => (
-            <AnswerCard key={a.number} a={a} mine={a.asked_by === user.username} onOpenRef={openRef}
-                        onUpdated={(u) => setAnswers((xs) => xs.map((x) => (x.number === u.number ? u : x)))} />
-          ))}
-          {busy && <div className="card thinking" role="status">Searching documents and live data…</div>}
-          {error && <p className="error" role="alert">{error}</p>}
-          <div ref={end} />
-
-          <form className="ask-form" onSubmit={(e) => { e.preventDefault(); ask(question); }}>
-            <label htmlFor="ask" className="visually-hidden">Your question</label>
-            <textarea id="ask" rows={2} value={question} placeholder="Ask a question…" disabled={busy}
-                      onChange={(e) => setQuestion(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(question); } }} />
-            <button type="submit" className="primary" disabled={busy || question.trim().length < 3}>Ask</button>
-          </form>
-          <p className="small muted disclaimer">
-            Answers are guidance. The controlled document is authoritative; open the cited section before acting.
-            Questions and answers are recorded.
-          </p>
-        </section>
-
-        <aside className="card library" aria-label="Document library">
-          <h2>Knowledge base</h2>
-          {(["sop", "runbook", "regulation"] as const).map((t) => byType(t).length > 0 && (
-            <div key={t} className="library-group">
-              <div className="small muted">{TYPE_LABEL[t]}</div>
-              <ul>
-                {byType(t).map((d) => (
-                  <li key={d.doc_id}>
-                    <button className="link" onClick={() => setViewer({ docId: d.doc_id, section: null })}>{d.doc_id}</button>
-                    <span className="small"> {d.title}</span>
-                    <span className="small muted"> · v{d.version}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          <div className="chat-history-list">
+            <div className="chat-history-label">Previous chats</div>
+            {loadingHistory && <p className="small muted">Loading history…</p>}
+            {!loadingHistory && savedChats.length === 0 && (
+              <p className="small muted">Your previous conversations will appear here.</p>
+            )}
+            {savedChats.map((session) => (
+              <button
+                key={session.id}
+                type="button"
+                title={session.title}
+                className={`chat-history-item${activeSessionId === session.id ? " active" : ""}`}
+                aria-pressed={activeSessionId === session.id}
+                onClick={() => openConversation(session.id)}
+              >
+                <span className="chat-history-icon" aria-hidden="true">▤</span>
+                <span className="chat-history-title">{session.title}</span>
+              </button>
+            ))}
+          </div>
         </aside>
+
+        <section className="chat-workspace" aria-label="Knowledge Assistant">
+          <header className="chat-topbar">
+            <h1>Knowledge Assistant</h1>
+            <button
+              type="button"
+              className="chat-doc-button"
+              aria-expanded={libraryOpen}
+              onClick={() => setLibraryOpen((current) => !current)}
+            >
+              Documents
+            </button>
+          </header>
+
+          <div className="chat-scroll">
+            {shown.length === 0 && !busy && (
+              <div className="chat-welcome">
+                <div
+                  className="chat-welcome-mark"
+                  aria-label="Syntra"
+                  role="img"
+                  style={{
+                    width: 64,
+                    height: 64,
+                    padding: 0,
+                    background: "transparent",
+                    border: 0,
+                    borderRadius: 0,
+                    display: "grid",
+                    placeItems: "center",
+                  }}
+                >
+                  <svg
+                    viewBox="0 0 80 72"
+                    width="64"
+                    height="64"
+                    fill="none"
+                    aria-hidden="true"
+                    style={{ display: "block" }}
+                  >
+                    <path
+                      d="M15 16H65L40 59Z"
+                      stroke="#7585DB"
+                      strokeWidth="4"
+                      strokeLinejoin="round"
+                    />
+                    <circle cx="15" cy="16" r="7" fill="#7585DB" />
+                    <circle cx="65" cy="16" r="7" fill="#7585DB" />
+                    <circle cx="40" cy="59" r="7" fill="#7585DB" />
+                  </svg>
+                </div>
+                <h2>How can I help?</h2>
+                <p>Ask about connected systems, incidents, SOPs, recalls, and GxP workflows.</p>
+                <div className="chat-suggestions">
+                  {SUGGESTIONS.map((suggestion) => (
+                    <button key={suggestion} type="button" disabled={loadingHistory}
+                      onClick={() => void ask(suggestion)}>
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {shown.length > 0 && (
+              <div className="chat-messages">
+                {shown.map((answer) => (
+                  <AnswerCard
+                    key={answer.number}
+                    a={answer}
+                    mine={answer.asked_by === user.username}
+                    onOpenRef={openRef}
+                    onUpdated={(updated) => setAnswers((current) =>
+                      current.map((answerItem) => answerItem.number === updated.number ? updated : answerItem)
+                    )}
+                  />
+                ))}
+              </div>
+            )}
+            {busy && <div className="chat-thinking" role="status">Searching documents and live data…</div>}
+            {error && <p className="error chat-error" role="alert">{error}</p>}
+            <div ref={end} />
+          </div>
+
+          <div className="chat-compose">
+            <form className="chat-input-form" onSubmit={(event) => {
+              event.preventDefault();
+              void ask(question);
+            }}>
+              <label htmlFor="ask" className="visually-hidden">Your question</label>
+              <textarea
+                id="ask"
+                rows={2}
+                value={question}
+                placeholder="Ask Syntra a question…"
+                disabled={busy || loadingHistory}
+                onChange={(event) => setQuestion(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    void ask(question);
+                  }
+                }}
+              />
+              <button type="submit" className="primary"
+                disabled={busy || loadingHistory || question.trim().length < 3}>
+                Send
+              </button>
+            </form>
+            <p className="chat-disclaimer">
+              Answers are guidance. Check the cited controlled documents before acting. Questions and answers are recorded.
+            </p>
+          </div>
+
+          {libraryOpen && (
+            <aside className="chat-library" aria-label="Document library">
+              <div className="chat-library-header">
+                <h2>Knowledge base</h2>
+                <button type="button" onClick={() => setLibraryOpen(false)} aria-label="Close documents">×</button>
+              </div>
+              {(["sop", "runbook", "regulation"] as const).map((type) => byType(type).length > 0 && (
+                <div key={type} className="chat-library-group">
+                  <h3>{TYPE_LABEL[type]}</h3>
+                  <ul>
+                    {byType(type).map((doc) => (
+                      <li key={doc.doc_id}>
+                        <button type="button" className="link"
+                          onClick={() => setViewer({ docId: doc.doc_id, section: null })}>
+                          {doc.doc_id}
+                        </button>
+                        <span className="small"> {doc.title}</span>
+                        <span className="small muted"> · v{doc.version}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </aside>
+          )}
+        </section>
       </div>
 
-      {viewer && <DocumentViewer docId={viewer.docId} section={viewer.section} onClose={() => setViewer(null)} />}
+      {viewer && (
+        <DocumentViewer
+          docId={viewer.docId}
+          section={viewer.section}
+          onClose={() => setViewer(null)}
+        />
+      )}
     </div>
   );
 }

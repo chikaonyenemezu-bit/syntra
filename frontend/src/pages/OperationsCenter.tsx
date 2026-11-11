@@ -171,38 +171,23 @@ export function OperationsCenter({ user }: { user: User }) {
   // --------------------------------------------------
 
   return (
-    <div className="page">
-      {/* Page header */}
-
-      <header className="page-head">
+    <div className="page operations-page">
+      <header className="page-head operations-head">
         <div>
+          <p className="operations-breadcrumb">Workspace / Operations Center</p>
           <h1>Operations Center</h1>
-
-          <p className="muted">
-            Live status of the GxP system landscape.
-            Refreshes every {POLL_MS / 1000} s.
+          <p className="muted operations-subtitle">
+            Connected systems and incident management overview
           </p>
         </div>
 
-        {/* Audit verification */}
-
         {can.verifyAudit(user) && (
           <div className="verify">
-            <button
-              type="button"
-              onClick={() => {
-                void verifyAuditTrail();
-              }}
-            >
+            <button type="button" onClick={() => { void verifyAuditTrail(); }}>
               Verify audit trail
             </button>
-
             {chain && (
-              <span
-                className={`small ${
-                  chain.valid ? "ok-text" : "error"
-                }`}
-              >
+              <span className={`small ${chain.valid ? "ok-text" : "error"}`}>
                 {chain.valid
                   ? `Intact: ${chain.records_checked} records verified`
                   : `Broken at record ${chain.first_broken_id}: ${chain.reason}`}
@@ -212,152 +197,95 @@ export function OperationsCenter({ user }: { user: User }) {
         )}
       </header>
 
-      {/* Refresh error */}
-
       {refreshError && (
         <div className="card" role="alert">
           <p className="error">{refreshError}</p>
-
-          <button
-            type="button"
-            onClick={() => {
-              void refresh();
-            }}
-          >
-            Retry
-          </button>
+          <button type="button" onClick={() => { void refresh(); }}>Retry</button>
         </div>
       )}
 
-      {/* Initial loading state */}
-
-      {loading && !summary && (
-        <p className="muted">
-          Loading operational systems...
-        </p>
-      )}
-
-      {/* --------------------------------------------------
-          KPI Summary
-      -------------------------------------------------- */}
+      {loading && !summary && <p className="muted">Loading operational systems...</p>}
 
       {summary && (
-        <section className="kpis" aria-label="Summary">
+        <section className="kpis operations-kpis" aria-label="Summary">
           <div className="kpi">
             <span>Systems operational</span>
-
-            <strong>
-              {summary.systems_by_status.operational ?? 0}
-              {" / "}
-              {summary.systems_total}
-            </strong>
+            <strong>{summary.systems_by_status.operational ?? 0} / {summary.systems_total}</strong>
           </div>
-
           <div className="kpi">
             <span>Active incidents</span>
-
             <strong>{summary.incidents_active}</strong>
           </div>
-
-          <div
-            className={`kpi ${
-              summary.incidents_critical_active
-                ? "kpi-bad"
-                : ""
-            }`}
-          >
-            <span>Critical</span>
-
-            <strong>
-              {summary.incidents_critical_active}
-            </strong>
+          <div className={`kpi ${summary.incidents_critical_active ? "kpi-bad" : ""}`}>
+            <span>Critical incidents</span>
+            <strong>{summary.incidents_critical_active}</strong>
           </div>
-
           <div className="kpi">
             <span>Awaiting closure</span>
-
-            <strong>
-              {summary.incidents_awaiting_closure}
-            </strong>
+            <strong>{summary.incidents_awaiting_closure}</strong>
           </div>
         </section>
       )}
 
-      {/* --------------------------------------------------
-          System Monitoring Cards
-      -------------------------------------------------- */}
-
-      <section className="systems">
-        {sortedSystems.map((system) => (
-          <SystemCard
-            key={system.code}
-            system={system}
-            tick={tick}
-            canInjectFault={can.injectFault(user)}
-            onFaultChanged={() => {
-              void refresh();
-            }}
-            onViewDetails={() => {
-              setSelectedSystemCode(system.code);
-            }}
-          />
-        ))}
+      <section className="card operations-panel" aria-labelledby="system-overview-heading">
+        <div className="section-head operations-section-head">
+          <h2 id="system-overview-heading">Connected systems</h2>
+          <span className="small muted">{systems.length} monitored systems</span>
+        </div>
+        <div className="table-wrap operations-table-wrap">
+          <table className="systems-table">
+            <thead>
+              <tr>
+                <th scope="col">System</th>
+                <th scope="col">Status</th>
+                <th scope="col">GxP</th>
+                <th scope="col">Latency</th>
+                <th scope="col">Last update</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedSystems.map((system) => (
+                <SystemCard
+                  key={system.code}
+                  compact
+                  system={system}
+                  tick={tick}
+                  canInjectFault={can.injectFault(user)}
+                  onFaultChanged={() => { void refresh(); }}
+                  onViewDetails={() => { setSelectedSystemCode(system.code); }}
+                />
+              ))}
+              {!loading && sortedSystems.length === 0 && (
+                <tr><td colSpan={6} className="empty">No monitored systems found.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
 
-      {/* --------------------------------------------------
-          Incident Management
-      -------------------------------------------------- */}
-
-      <section className="card">
-        <div className="section-head">
-          <h2>Incidents</h2>
-
+      <section className="card operations-panel operations-incidents" aria-labelledby="incident-register-heading">
+        <div className="section-head operations-section-head">
+          <h2 id="incident-register-heading">Incident register</h2>
           <div className="row">
-            {/* Incident filters */}
-
-            <div
-              className="segmented"
-              role="group"
-              aria-label="Filter incidents"
-            >
-              {(
-                ["active", "resolved", "all"] as Filter[]
-              ).map((currentFilter) => (
-                <button
-                  key={currentFilter}
-                  type="button"
-                  aria-pressed={
-                    filter === currentFilter
-                  }
-                  onClick={() =>
-                    setFilter(currentFilter)
-                  }
-                >
+            <div className="segmented" role="group" aria-label="Filter incidents">
+              {(["active", "resolved", "all"] as Filter[]).map((currentFilter) => (
+                <button key={currentFilter} type="button"
+                        aria-pressed={filter === currentFilter}
+                        onClick={() => setFilter(currentFilter)}>
                   {currentFilter === "resolved"
                     ? "Resolved"
-                    : currentFilter
-                        .charAt(0)
-                        .toUpperCase() +
-                      currentFilter.slice(1)}
+                    : currentFilter.charAt(0).toUpperCase() + currentFilter.slice(1)}
                 </button>
               ))}
             </div>
-
-            {/* Manual incident reporting */}
-
             {can.createIncident(user) && !creating && (
-              <button
-                type="button"
-                className="primary"
-                onClick={() => setCreating(true)}
-              >
+              <button type="button" className="primary" onClick={() => setCreating(true)}>
                 Report incident
               </button>
             )}
           </div>
         </div>
-
-        {/* New incident form */}
 
         {creating && (
           <NewIncidentForm
@@ -365,36 +293,27 @@ export function OperationsCenter({ user }: { user: User }) {
             onCancel={() => setCreating(false)}
             onCreated={(incident) => {
               setCreating(false);
-
               setSelected(incident);
-
               void refresh();
             }}
           />
         )}
-
-        {/* Incident table */}
-
-        <IncidentTable
-          incidents={shown}
-          onOpen={(incident) => {
-            setSelectedSystemCode(null);
-            setSelected(incident);
-          }}
-        />
+        <div className="operations-incident-scroll">
+          <IncidentTable
+            incidents={shown}
+            onOpen={(incident) => {
+              setSelectedSystemCode(null);
+              setSelected(incident);
+            }}
+          />
+        </div>
       </section>
-
-      {/* --------------------------------------------------
-          System Details Drawer
-      -------------------------------------------------- */}
 
       {selectedSystem && (
         <SystemDetailsDrawer
           system={selectedSystem}
           incidents={incidents}
-          onClose={() => {
-            setSelectedSystemCode(null);
-          }}
+          onClose={() => { setSelectedSystemCode(null); }}
           onOpenIncident={(incident) => {
             setSelectedSystemCode(null);
             setSelected(incident);
@@ -402,17 +321,11 @@ export function OperationsCenter({ user }: { user: User }) {
         />
       )}
 
-      {/* --------------------------------------------------
-          Incident Investigation Drawer
-      -------------------------------------------------- */}
-
       {selected && (
         <IncidentDrawer
           incident={selected}
           user={user}
-          onClose={() => {
-            setSelected(null);
-          }}
+          onClose={() => { setSelected(null); }}
           onChanged={(updatedIncident) => {
             setSelected(updatedIncident);
             void refresh();

@@ -1,46 +1,137 @@
+
 import { fmtDate } from "../../format";
 import type { Lifecycle } from "../../types";
 import { StatusBadge } from "../shared/StatusBadge";
 
 export const REVIEW_TEXT: Record<string, string> = {
-  ok: "In order", due_soon: "Due soon", overdue: "Overdue", not_applicable: "Not applicable",
+  ok: "In order",
+  due_soon: "Due soon",
+  overdue: "Overdue",
+  not_applicable: "Not applicable",
 };
 
-export function SystemInventory({ rows, onOpen }: { rows: Lifecycle[]; onOpen: (code: string) => void }) {
+export function SystemInventory({
+  rows,
+  onOpen,
+}: {
+  rows: Lifecycle[];
+  onOpen: (code: string) => void;
+}) {
   return (
-    <div className="table-wrap">
-      <table>
+    <div className="table-wrap lifecycle-inventory">
+      <table aria-label="GxP system inventory">
         <thead>
           <tr>
-            <th>System</th><th>GAMP</th><th>Risk</th><th>Version</th><th>Validation</th>
-            <th>Next periodic review</th><th className="num">Open changes</th>
+            <th scope="col">System</th>
+            <th scope="col">GAMP</th>
+            <th scope="col">Risk</th>
+            <th scope="col">Version information</th>
+            <th scope="col">Validation status</th>
+            <th scope="col">Next periodic review</th>
+            <th scope="col" className="num">
+              Open changes
+            </th>
           </tr>
         </thead>
+
         <tbody>
           {rows.map((r) => {
-            const drift = r.validated_version !== r.current_version;
+            const drift =
+              r.validated_version !== null &&
+              r.validated_version !== r.current_version;
+
+            const overdue = r.review_state === "overdue";
+
             return (
-              <tr key={r.system.code}>
+              <tr
+                key={r.system.code}
+                className={
+                  overdue
+                    ? "lifecycle-row-overdue"
+                    : undefined
+                }
+              >
+                {/* System identification */}
                 <td>
-                  <button className="link" onClick={() => onOpen(r.system.code)}>{r.system.code}</button>
-                  <div className="small muted">{r.system.name}</div>
+                  <button
+                    type="button"
+                    className="link"
+                    onClick={() => onOpen(r.system.code)}
+                    aria-label={`Open validation record for ${r.system.code}`}
+                  >
+                    {r.system.code}
+                  </button>
+
+                  <div className="small muted lifecycle-system-name">
+                    {r.system.name}
+                  </div>
                 </td>
-                <td>{r.system.gamp_category ?? "–"}</td>
-                <td><StatusBadge value={r.risk_class} /></td>
-                <td className="nowrap">
-                  {r.current_version}
-                  {drift && (
-                    <div className="small warn-text" title="The running version differs from the validated version">
-                      validated: {r.validated_version ?? "none"}
+
+                {/* GAMP category */}
+                <td>
+                  {r.system.gamp_category ?? "–"}
+                </td>
+
+                {/* Risk classification */}
+                <td>
+                  <StatusBadge value={r.risk_class} />
+                </td>
+
+                {/* Current and validated versions */}
+                <td>
+                  <div className="lifecycle-version">
+                    <div>
+                      <span className="small muted">
+                        Current:{" "}
+                      </span>
+
+                      <strong>{r.current_version}</strong>
                     </div>
-                  )}
+
+                    <div
+                      className={
+                        drift
+                          ? "small warn-text"
+                          : "small muted"
+                      }
+                    >
+                      Validated:{" "}
+                      {r.validated_version ??
+                        "Not yet validated"}
+                    </div>
+                  </div>
                 </td>
-                <td><StatusBadge value={r.validation_status} /></td>
-                <td className="nowrap">
-                  {r.next_review_due ? fmtDate(r.next_review_due) : "–"}{" "}
-                  <StatusBadge value={r.review_state} text={REVIEW_TEXT[r.review_state]} />
+
+                {/* Validation status */}
+                <td>
+                  <StatusBadge
+                    value={r.validation_status}
+                  />
                 </td>
-                <td className="num">{r.open_changes}</td>
+
+                {/* Periodic review */}
+                <td>
+                  <div className="lifecycle-review">
+                    <span className="lifecycle-review-date">
+                      {r.next_review_due
+                        ? fmtDate(r.next_review_due)
+                        : "–"}
+                    </span>
+
+                    <StatusBadge
+                      value={r.review_state}
+                      text={
+                        REVIEW_TEXT[r.review_state] ??
+                        r.review_state
+                      }
+                    />
+                  </div>
+                </td>
+
+                {/* Open change requests */}
+                <td className="num">
+                  {r.open_changes}
+                </td>
               </tr>
             );
           })}
